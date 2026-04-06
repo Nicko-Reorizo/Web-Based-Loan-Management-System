@@ -21,11 +21,11 @@ The Web-Based Loan Management System is a digital platform designed to streamlin
 - System automatically computes interest based on predefined rates
 - Reduces manual computation errors
 
-## Balance Tracking
+### Balance Tracking
 - Automatically updates remaining loan balances
 - Viewable by both admin and clients for transparency
 
-## Repayment & Deduction Monitoring
+### Repayment & Deduction Monitoring
 - Tracks loan repayments and salary deductions
 - Updates balances automatically after each payment
 - Records transaction history in real time
