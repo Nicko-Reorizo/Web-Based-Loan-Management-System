@@ -29,3 +29,9 @@ The Web-Based Loan Management System is a digital platform designed to streamlin
 - Tracks loan repayments and salary deductions
 - Updates balances automatically after each payment
 - Records transaction history in real time
+
+# Tech Stack
+- FRONT-END:
+  React.js <img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/react/react-original.svg" />
+  
+          
