@@ -1,5 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap');
-
+@import "tailwindcss";
 
 button{
   cursor: pointer;
@@ -22,4 +22,107 @@ button{
   font-optical-sizing: auto;
   font-weight: 700;
   font-style: normal;
+}
+.inter-semibold {
+  font-family: "Inter", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 600;
+  font-style: normal;
+}
+
+.Search{
+  @apply w-[700px];
+}
+
+
+.input-group {
+  position: relative;
+  width: 300px;
+  margin: 12px;
+}
+
+/* apply to BOTH input and select */
+.input-group input,
+.input-group select {
+  width: 100%;
+  padding: 10px;
+  font-size: 16px;
+  border: 1px solid #aaaaaa3a;
+  border-radius: 5px;
+  outline: none;
+  background: white;
+  appearance: none; /* removes default select arrow (optional) */
+}
+
+/* label */
+.input-group label {
+  position: absolute;
+  left: 10px;
+  top: 10px;
+  color: #777;
+  transition: 0.3s ease;
+  background: white;
+  padding: 0 5px;
+  pointer-events: none;
+}
+
+/* FLOAT LABEL LOGIC */
+.input-group input:focus + label,
+.input-group input:valid + label,
+.input-group select:focus + label,
+.input-group select:not([value=""]) + label {
+  top: -8px;
+  font-size: 12px;
+  color: #126d71;
+}
+
+
+
+
+
+
+
+
+
+
+
+.input-group-1 {
+  position: relative;
+ 
+  margin: 12px;
+}
+
+/* apply to BOTH input and select */
+.input-group-1 input,
+.input-group-1 select {
+  width: 100%;
+  padding: 10px;
+  font-size: 16px;
+  border: 1px solid #aaaaaa3a;
+  border-radius: 5px;
+  outline: none;
+  background: white;
+  appearance: none; /* removes default select arrow (optional) */
+}
+
+/* label */
+.input-group-1 label {
+  position: absolute;
+  left: 10px;
+  top: 10px;
+  color: #777;
+  transition: 0.3s ease;
+  background: white;
+  padding: 0 5px;
+  pointer-events: none;
+}
+
+/* FLOAT LABEL LOGIC */
+.input-group-1 input:focus + label,
+.input-group-1 input:valid + label,
+.input-group-1 select:focus + label,
+.input-group-1 select:not([value=""]) + label {
+  top: -8px;
+  font-size: 12px;
+  color: #126d71;
 }
