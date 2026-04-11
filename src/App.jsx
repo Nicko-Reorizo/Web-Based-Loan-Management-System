@@ -2,9 +2,9 @@ import { useState } from "react";
 import "./App.css";
 
 import Navbar from "./components/navbar.jsx";
-import LandingPage from "./Client_Pages/LandingPage.jsx";
-import LoanNow from "./Client_Pages/LoanNow.jsx";
-import Details from "./Client_Pages/LoanDetails.jsx";
+import LandingPage from "./ClientPages/LandingPage.jsx";
+import LoanNow from "./ClientPages/LoanNow.jsx";
+import Details from "./ClientPages/LoanDetails.jsx";
 function App() {
   const [page, setPage] = useState("landing");
 
