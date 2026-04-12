@@ -1,8 +1,12 @@
-import Navbar from "../components/navbar.jsx"
-export default function LoanNow({setPage}) {
+
+import { useNavigate } from "react-router-dom";
+import Navbar from "../components/navbar.jsx";
+
+export default function LoanNow() {
   return (
     <>
-    
+      <Navbar></Navbar>
+
       <div
         className="LandingPage bg-[white] h-[100vh] flex justify-center items-center"
         style={{}}

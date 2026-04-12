@@ -1,7 +1,11 @@
 import { Search } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import Navbar from "../components/navbar.jsx";
 
-export default function LoanDetails({ setPage }) {
+export default function LoanDetails() {
   return (
+    <>
+    <Navbar></Navbar>
     <div className="flex flex-col justify-center items-center w-full h-[80vh]">
       
       <p className="inter-bold mt-10 text-[50px]">
@@ -27,5 +31,5 @@ export default function LoanDetails({ setPage }) {
         </button>
       </div>
     </div>
-  );
+  </>);
 }

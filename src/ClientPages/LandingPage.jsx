@@ -2,16 +2,23 @@ import { useState } from "react";
 
 import "../App.css";
 import Navbar from "../components/navbar.jsx";
+import { useNavigate } from "react-router-dom";
 
-export default function LandingPage({setPage}){
-    return(
-  <div className="LandingPage bg-[#126d71] h-[100vh] " style={{
-    background: "linear-gradient(180deg, #126d71 0%, #0b3d40 100%)",
-    boxShadow: "inset 0 -20px 40px -10px rgba(0, 0, 0, 0.6)",
-  }}>
-        
+export default function LandingPage() {
+  const navigate = useNavigate();
+
+  return (
+    <>
+      <Navbar></Navbar>
+      
+      <div
+        className="LandingPage bg-[#126d71] h-[100vh] "
+        style={{
+          background: "linear-gradient(180deg, #126d71 0%, #0b3d40 100%)",
+          boxShadow: "inset 0 -20px 40px -10px rgba(0, 0, 0, 0.6)",
+        }}
+      >
         <div className="Hero flex flex-col items-center h-[90vh]">
-         
           <div className="flex flex-col items-center justify-center gap-y-6 flex-1">
             <p className="poppins-extrabold 2xl:text-[80px] leading-24 text-white text-center">
               Financial Help When <br /> You Need It Most.
@@ -23,16 +30,21 @@ export default function LandingPage({setPage}){
             </p>
 
             <div className="ActionButtons space-x-10">
-              <button className="text-white bg-[#ff6f61] inter-bold p-3 py-6 rounded-full text-[20px] w-[300px]" onClick={() => setPage("loan")}>
-                Loan Now  
+              <button
+                className="text-white bg-[#ff6f61] inter-bold p-3 py-6 rounded-full text-[20px] w-[300px]"
+                onClick={() => navigate("/loan")}
+              >
+                Loan Now
               </button>
-              <button className="text-white border-4 border-[#ff6f61] inter-bold p-3 py-6 rounded-full   text-[20px] w-[300px]" onClick={()=>setPage("details")}>
+              <button
+                className="text-white border-4 border-[#ff6f61] inter-bold p-3 py-6 rounded-full   text-[20px] w-[300px]"
+                onClick={() => navigate("/details")}
+              >
                 My Loan Details
               </button>
             </div>
           </div>
 
-         
           <div className="Data flex flex-row justify-center pb-10  text-center">
             <div className="AL px-10 border-r-2 border-[#ffffff69]">
               <p className="text-[#ff6f61] inter-bold text-[40px]">100k+</p>
@@ -47,11 +59,8 @@ export default function LandingPage({setPage}){
               <p className="text-white inter-reg">Approved Loans</p>
             </div>
           </div>
-
-
-         
-         </div>
+        </div>
       </div>
-      );
+    </>
+  );
 }
-
