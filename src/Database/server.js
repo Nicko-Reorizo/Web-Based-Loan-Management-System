@@ -79,7 +79,7 @@ app.get("/api/pending-loans", (req, res) => {
 // for approving
 app.put("/api/loans/:id/approve", (req, res) => {
   const { id } = req.params;
-  const { officerId } = req.body; // 👈 NEW
+  const { officerId } = req.body; 
 
   if (!officerId) {
     return res.status(400).json({ error: "Officer ID is required" });
@@ -220,11 +220,15 @@ app.post("/login", (req, res) => {
     }
 
     if (result.length > 0) {
-      return res.status(200).json({
-        message: "Login successful.",
-        user: result[0],
-      });
-    }
+  return res.status(200).json({
+    message: "Login successful.",
+    user: {
+      id: result[0].Officer_ID,
+      name: result[0].Officer_Name,
+      username: result[0].Officer_Username,
+    },
+  });
+}
 
     return res.status(401).json({
       message: "Invalid username or password.",
@@ -343,6 +347,204 @@ app.post("/api/payments", (req, res) => {
     });
   });
 });
+
+// Upload Application Form
+app.post("/api/loans/apply", async (req, res) => {
+  try {
+    const {
+      fullName,
+      phoneNumber,
+      street,
+      city,
+      province,
+      zip,
+      amount,
+      loanTenure,
+      loanType,
+    } = req.body;
+
+    if (
+      !fullName ||
+      !phoneNumber ||
+      !street ||
+      !city ||
+      !province ||
+      !zip ||
+      !amount ||
+      !loanTenure ||
+      !loanType
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "All fields are required.",
+      });
+    }
+
+    const parsedAmount = Number(amount);
+    const parsedLoanTenure = Number(loanTenure);
+    const parsedLoanType = Number(loanType);
+
+    if (Number.isNaN(parsedAmount) || parsedAmount <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Amount must be greater than 0.",
+      });
+    }
+
+    if (Number.isNaN(parsedLoanTenure) || parsedLoanTenure <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Loan tenure must be greater than 0.",
+      });
+    }
+
+    let loanTypeId;
+    let interestRate;
+
+    if (parsedLoanType === 3) {
+      loanTypeId = 1;
+      interestRate = 3;
+    } else if (parsedLoanType === 5) {
+      loanTypeId = 2;
+      interestRate = 5;
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid loan type selected.",
+      });
+    }
+
+    const [existingBorrowers] = await db.promise().query(
+      `SELECT Client_ID
+       FROM BORROWER
+       WHERE Client_FullName = ? AND Phone_Number = ?
+       LIMIT 1`,
+      [fullName, phoneNumber]
+    );
+
+    let clientId;
+
+    if (existingBorrowers.length > 0) {
+      clientId = existingBorrowers[0].Client_ID;
+    } else {
+      const [borrowerResult] = await db.promise().query(
+        `INSERT INTO BORROWER
+         (Client_FullName, Street, City, Province, ZIP, Phone_Number)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        [fullName, street, city, province, zip, phoneNumber]
+      );
+
+      clientId = borrowerResult.insertId;
+    }
+
+    const today = new Date();
+    const maturityDate = new Date();
+    maturityDate.setMonth(maturityDate.getMonth() + parsedLoanTenure);
+
+    const formattedToday = today.toISOString().split("T")[0];
+    const formattedMaturity = maturityDate.toISOString().split("T")[0];
+
+    const interestAmount =
+      parsedAmount * (interestRate / 100) * parsedLoanTenure;
+
+    const totalAmount = parsedAmount + interestAmount;
+    const totalMonthlyAmortization = totalAmount / parsedLoanTenure;
+
+    const [loanResult] = await db.promise().query(
+      `INSERT INTO LOAN
+       (
+         Client_ID,
+         Loan_Type_ID,
+         Officer_ID,
+         Principal_Amount,
+         Total_Monthly_Amortization,
+         Disbursement_Date,
+         Maturity_Date,
+         Balance,
+         Interest_Amount,
+         Date_Approved,
+         Loan_Status,
+         Loan_Tenure
+       )
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        clientId,
+        loanTypeId,
+        1,
+        parsedAmount,
+        totalMonthlyAmortization,
+        formattedToday,
+        formattedMaturity,
+        totalAmount,
+        interestAmount,
+        "2000-01-01",
+        "Pending",
+        parsedLoanTenure,
+      ]
+    );
+
+    return res.status(201).json({
+      success: true,
+      message: "Loan application submitted successfully.",
+      data: {
+        borrowerId: clientId,
+        loanId: loanResult.insertId,
+        loanTypeId,
+        interestRate,
+        interestAmount,
+        totalAmount,
+        totalMonthlyAmortization,
+        status: "Pending",
+      },
+    });
+  } catch (error) {
+    console.error("Apply loan error:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Server error.",
+    });
+  }
+});
+
+// find loan
+app.get("/api/loan-details/client/:clientId", (req, res) => {
+  const { clientId } = req.params;
+
+  console.log("Client ID received:", clientId);
+
+  const sql = `
+    SELECT
+      b.Client_ID,
+      b.Client_FullName,
+      l.Loan_ID,
+      l.Loan_Status,
+      l.Balance,
+      l.Principal_Amount,
+      l.Total_Monthly_Amortization
+    FROM BORROWER b
+    INNER JOIN LOAN l ON b.Client_ID = l.Client_ID
+    WHERE b.Client_ID = ?
+  `;
+
+  db.query(sql, [clientId], (err, result) => {
+    if (err) {
+      console.error("Loan details query error:", err);
+      return res.status(500).json({
+        message: err.message,
+        error: err,
+      });
+    }
+
+    if (result.length === 0) {
+      return res.status(404).json({
+        message: "No loan found for this client.",
+      });
+    }
+
+    return res.status(200).json(result);
+  });
+});
+
 
 app.listen(5000, () => {
   console.log("Server running on http://localhost:5000");

@@ -7,34 +7,38 @@ export default function Login() {
   const [password, setPassword] = useState("");
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+  e.preventDefault();
 
-    try {
-      const response = await fetch("http://localhost:5000/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          username,
-          password,
-        }),
-      });
+  try {
+    const response = await fetch("http://localhost:5000/login", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        username,
+        password,
+      }),
+    });
 
-      const data = await response.json();
+    const data = await response.json();
+    console.log("Login response:", data);
 
-      if (!response.ok) {
-        alert(data.message);
-        return;
-      }
-
-      alert("Login successful.");
-      navigate("/adminMainPage");
-    } catch (error) {
-      console.log(error);
-      alert("Server error.");
+    if (!response.ok) {
+      alert(data.message);
+      return;
     }
-  };
+
+    localStorage.setItem("officerId", data.user.id);
+    localStorage.setItem("officerName", data.user.name);
+
+    alert("Login successful.");
+    navigate("/adminMainPage");
+  } catch (error) {
+    console.log(error);
+    alert("Server error.");
+  }
+};
 
   return (
     <>

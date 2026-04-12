@@ -27,66 +27,89 @@ export default function LoanNow() {
     }));
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setMessage("");
-    setIsError(false);
+  const resetForm = () => {
+    setFormData({
+      fullName: "",
+      phoneNumber: "",
+      street: "",
+      city: "",
+      province: "",
+      zip: "",
+      amount: "",
+      loanTenure: "1",
+      loanType: "",
+    });
+  };
+
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  setLoading(true);
+  setMessage("");
+  setIsError(false);
+
+  try {
+    const payload = {
+      fullName: formData.fullName.trim(),
+      phoneNumber: formData.phoneNumber.trim(),
+      street: formData.street.trim(),
+      city: formData.city.trim(),
+      province: formData.province.trim(),
+      zip: formData.zip.trim(),
+      amount: Number(formData.amount),
+      loanTenure: Number(formData.loanTenure),
+      loanType: Number(formData.loanType),
+    };
+
+    const response = await fetch("http://localhost:5000/api/loans/apply", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const text = await response.text();
+    let data;
 
     try {
-      const response = await fetch("http://localhost:5000/api/loans/apply", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          fullName: formData.fullName.trim(),
-          phoneNumber: formData.phoneNumber.trim(),
-          street: formData.street.trim(),
-          city: formData.city.trim(),
-          province: formData.province.trim(),
-          zip: formData.zip.trim(),
-          amount: Number(formData.amount),
-          loanTenure: Number(formData.loanTenure),
-          loanType: Number(formData.loanType),
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || data.message || "Failed to submit application.");
-      }
-
-      setMessage(data.message || "Loan application submitted successfully.");
-      setIsError(false);
-
-      setFormData({
-        fullName: "",
-        phoneNumber: "",
-        street: "",
-        city: "",
-        province: "",
-        zip: "",
-        amount: "",
-        loanTenure: "1",
-        loanType: "",
-      });
-    } catch (error) {
-      console.error("FRONTEND ERROR:", error);
-      setMessage(error.message || "Something went wrong.");
-      setIsError(true);
-    } finally {
-      setLoading(false);
+      data = JSON.parse(text);
+    } catch {
+      throw new Error(text || "Server returned invalid response.");
     }
-  };
+
+    if (!response.ok) {
+      throw new Error(data.message || "Failed to submit application.");
+    }
+
+    setMessage(data.message || "Loan application submitted successfully.");
+    setIsError(false);
+
+    setFormData({
+      fullName: "",
+      phoneNumber: "",
+      street: "",
+      city: "",
+      province: "",
+      zip: "",
+      amount: "",
+      loanTenure: "1",
+      loanType: "",
+    });
+  } catch (error) {
+    console.error("Loan application error:", error);
+    setMessage(error.message || "Something went wrong.");
+    setIsError(true);
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <>
       <Navbar />
 
-      <div className="LandingPage bg-[white] min-h-screen flex justify-center items-center py-10">
-        <form onSubmit={handleSubmit}>
+      <div className="min-h-screen bg-white flex justify-center items-center py-10 px-4">
+        <form onSubmit={handleSubmit} className="w-full max-w-4xl">
           <div
             className="bg-[#f0f0f0] rounded-[15px] p-10 grid grid-cols-2 gap-4"
             style={{ boxShadow: "0 0 100px rgba(0,0,0,0.3)" }}

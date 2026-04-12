@@ -5,69 +5,72 @@ export default function Approval() {
   const [loading, setLoading] = useState(true);
 
   const fetchPendingLoans = async () => {
-  try {
-    const res = await fetch("http://localhost:5000/api/pending-loans");
+    try {
+      const res = await fetch("http://localhost:5000/api/pending-loans");
 
-    if (!res.ok) {
-      throw new Error(`HTTP error! Status: ${res.status}`);
+      if (!res.ok) {
+        throw new Error(`HTTP error! Status: ${res.status}`);
+      }
+
+      const data = await res.json();
+      setPendingLoans(data);
+    } catch (error) {
+      console.error("Failed to fetch pending loans:", error);
+    } finally {
+      setLoading(false);
     }
-
-    const data = await res.json();
-    setPendingLoans(data);
-  } catch (error) {
-    console.error("Failed to fetch pending loans:", error);
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   useEffect(() => {
     fetchPendingLoans();
   }, []);
 
-const handleApprove = async (loanId) => {
-  const user = JSON.parse(localStorage.getItem("user"));
+  const handleApprove = async (loanId) => {
+    const officerId = localStorage.getItem("officerId");
 
-  if (!user) {
-    alert("User not logged in");
-    return;
-  }
-
-  try {
-    const res = await fetch(`http://localhost:5000/api/loans/${loanId}/approve`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        officerId: user.Officer_ID, 
-      }),
-    });
-
-    const data = await res.json();
-
-    if (!res.ok) {
-      alert(data.error);
+    if (!officerId) {
+      alert("User not logged in");
       return;
     }
 
-    console.log(data.message);
+    try {
+      const res = await fetch(
+        `http://localhost:5000/api/loans/${loanId}/approve`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+  officerId: Number(officerId),
+}),
+        },
+      );
 
-    // remove from pending list
-    setPendingLoans((prev) =>
-      prev.filter((loan) => loan.Loan_ID !== loanId)
-    );
+      const data = await res.json();
 
-  } catch (error) {
-    console.error("Failed to approve loan:", error);
-  }
-};
+      if (!res.ok) {
+        alert(data.error);
+        return;
+      }
+
+      console.log(data.message);
+
+      // remove from pending list
+      setPendingLoans((prev) => prev.filter((loan) => loan.Loan_ID !== loanId));
+    } catch (error) {
+      console.error("Failed to approve loan:", error);
+    }
+  };
 
   const handleReject = async (loanId) => {
     try {
-      const res = await fetch(`http://localhost:5000/api/loans/${loanId}/reject`, {
-        method: "PUT",
-      });
+      const res = await fetch(
+        `http://localhost:5000/api/loans/${loanId}/reject`,
+        {
+          method: "PUT",
+        },
+      );
 
       const data = await res.json();
       console.log(data.message);
@@ -113,13 +116,17 @@ const handleApprove = async (loanId) => {
               {pendingLoans.map((loan) => (
                 <tr key={loan.Loan_ID} className="border-t hover:bg-gray-50">
                   <td className="px-4 py-3">{loan.Loan_ID}</td>
-                  <td className="px-4 py-3 font-medium">{loan.Client_FullName}</td>
+                  <td className="px-4 py-3 font-medium">
+                    {loan.Client_FullName}
+                  </td>
                   <td className="px-4 py-3">{loan.Phone_Number}</td>
                   <td className="px-4 py-3">
                     {loan.Street}, {loan.City}, {loan.Province}, {loan.ZIP}
                   </td>
                   <td className="px-4 py-3">{loan.Principal_Amount}</td>
-                  <td className="px-4 py-3">{loan.Total_Monthly_Amortization}</td>
+                  <td className="px-4 py-3">
+                    {loan.Total_Monthly_Amortization}
+                  </td>
                   <td className="px-4 py-3">{loan.Balance}</td>
                   <td className="px-4 py-3">{loan.Loan_Tenure}</td>
                   <td className="px-4 py-3">
