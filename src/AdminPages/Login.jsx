@@ -1,12 +1,39 @@
 import { useNavigate } from "react-router-dom";
+import { useState } from "react";
 
 export default function Login() {
   const navigate = useNavigate();
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
-    navigate("/adminMainPage");
+    try {
+      const response = await fetch("http://localhost:5000/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          username,
+          password,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        alert(data.message);
+        return;
+      }
+
+      alert("Login successful.");
+      navigate("/adminMainPage");
+    } catch (error) {
+      console.log(error);
+      alert("Server error.");
+    }
   };
 
   return (
@@ -41,6 +68,9 @@ export default function Login() {
                     id=""
                     className="border border-[#aaaaaa3a] text-sm p-3 rounded-sm"
                     placeholder="Enter your Username."
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    required
                   />
                 </div>
                 <div className="LoginInput flex flex-col">
@@ -53,6 +83,9 @@ export default function Login() {
                     id=""
                     className="border border-[#aaaaaa3a] text-sm p-3 rounded-sm"
                     placeholder="Enter your Password."
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
                   />
                 </div>
 
@@ -66,6 +99,7 @@ export default function Login() {
               <div className="flex flex-row gap-x-1 col-span-2 justify-center pb-5 mt-5">
                 <p>Don't have an account? </p>
                 <button
+                  type="button"
                   className="underline text-blue-800"
                   onClick={() => navigate("/adminRegister")}
                 >
