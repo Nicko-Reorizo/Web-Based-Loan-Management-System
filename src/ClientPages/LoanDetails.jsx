@@ -3,60 +3,58 @@ import { useState } from "react";
 import Navbar from "../components/navbar.jsx";
 
 export default function LoanDetails() {
-  const [clientId, setClientId] = useState("");
+  const [loanId, setLoanId] = useState("");
   const [loans, setLoans] = useState([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleSearch = async () => {
-    if (!clientId.trim()) {
-      setError("Please enter a Client ID.");
-      setLoans([]);
+  if (!loanId.trim()) {
+    setError("Please enter a Loan ID.");
+    setLoans([]);
+    return;
+  }
+
+  try {
+    setLoading(true);
+    setError("");
+    setLoans([]);
+
+    const response = await fetch(
+      `http://localhost:5000/api/loan-details/loan/${loanId}`
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      setError(data.message || "Failed to fetch loan details.");
       return;
     }
 
-    try {
-      setLoading(true);
-      setError("");
-      setLoans([]);
-
-      const response = await fetch(
-        `http://localhost:5000/api/loan-details/client/${clientId}`
-      );
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        setError(data.message || "Failed to fetch loan details.");
-        return;
-      }
-
-      setLoans(data);
-    } catch (error) {
-      console.error("Fetch loan details error:", error);
-      setError("Server error.");
-    } finally {
-      setLoading(false);
-    }
-  };
+    setLoans(data);
+  } catch (error) {
+    console.error("Fetch loan details error:", error);
+    setError("Server error.");
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <>
       <Navbar />
       <div className="flex flex-col justify-center items-center w-full min-h-[80vh] px-4">
-        <p className="inter-bold mt-10 text-[50px]">
-          Check My Loan
-        </p>
+        <p className="inter-bold mt-10 text-[50px]">Check My Loan</p>
 
         <div className="flex items-center bg-gray-200 rounded-full p-3 w-[700px] shadow-md mt-6 max-w-full">
           <div className="flex items-center flex-1 px-4 gap-2">
             <Search size={25} className="text-gray-500" />
             <input
               type="text"
-              placeholder="Enter Client ID"
+              placeholder="Enter Loan ID"
               className="bg-transparent outline-none w-full text-lg"
-              value={clientId}
-              onChange={(e) => setClientId(e.target.value)}
+              value={loanId}
+              onChange={(e) => setLoanId(e.target.value)}
             />
           </div>
 
@@ -72,9 +70,7 @@ export default function LoanDetails() {
           <p className="mt-6 text-gray-600">Loading loan details...</p>
         )}
 
-        {error && (
-          <p className="mt-6 text-red-600 font-medium">{error}</p>
-        )}
+        {error && <p className="mt-6 text-red-600 font-medium">{error}</p>}
 
         {loans.length > 0 && (
           <div className="mt-8 bg-white shadow-lg rounded-2xl p-8 w-[900px] max-w-full overflow-x-auto">
@@ -101,7 +97,9 @@ export default function LoanDetails() {
                     <td className="px-4 py-3">{loan.Loan_Status}</td>
                     <td className="px-4 py-3">{loan.Balance}</td>
                     <td className="px-4 py-3">{loan.Principal_Amount}</td>
-                    <td className="px-4 py-3">{loan.Total_Monthly_Amortization}</td>
+                    <td className="px-4 py-3">
+                      {loan.Total_Monthly_Amortization}
+                    </td>
                   </tr>
                 ))}
               </tbody>

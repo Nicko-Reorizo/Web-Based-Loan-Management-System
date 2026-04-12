@@ -507,10 +507,10 @@ app.post("/api/loans/apply", async (req, res) => {
 });
 
 // find loan
-app.get("/api/loan-details/client/:clientId", (req, res) => {
-  const { clientId } = req.params;
+app.get("/api/loan-details/loan/:loanId", (req, res) => {
+  const { loanId } = req.params;
 
-  console.log("Client ID received:", clientId);
+  console.log("Loan ID received:", loanId);
 
   const sql = `
     SELECT
@@ -523,21 +523,20 @@ app.get("/api/loan-details/client/:clientId", (req, res) => {
       l.Total_Monthly_Amortization
     FROM BORROWER b
     INNER JOIN LOAN l ON b.Client_ID = l.Client_ID
-    WHERE b.Client_ID = ?
+    WHERE l.Loan_ID = ?
   `;
 
-  db.query(sql, [clientId], (err, result) => {
+  db.query(sql, [loanId], (err, result) => {
     if (err) {
       console.error("Loan details query error:", err);
       return res.status(500).json({
         message: err.message,
-        error: err,
       });
     }
 
     if (result.length === 0) {
       return res.status(404).json({
-        message: "No loan found for this client.",
+        message: "Loan not found.",
       });
     }
 
