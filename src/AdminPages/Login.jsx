@@ -6,7 +6,7 @@ export default function Login() {
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    navigate("/adminDashboard");
+    navigate("/adminMainPage");
   };
 
   return (

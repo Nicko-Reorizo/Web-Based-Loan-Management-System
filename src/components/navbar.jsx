@@ -1,5 +1,6 @@
 import logo from '../assets/logo.png'
 import { useNavigate } from "react-router-dom";
+import { BarChart3, Users, CheckCircle } from "lucide-react";
 
 export default function navbar({ setPage }){
 

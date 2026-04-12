@@ -1,7 +1,6 @@
-
 import "./App.css";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { useNavigate } from "react-router-dom";
+
 
 import Navbar from "./components/navbar.jsx";
 import LandingPage from "./ClientPages/LandingPage.jsx";
@@ -10,7 +9,7 @@ import Details from "./ClientPages/LoanDetails.jsx";
 
 import Login from "./AdminPages/Login.jsx";
 import Register from "./AdminPages/Register.jsx";
-import Dashboard from "./AdminPages/Dashboard.jsx";
+import MainPage from "./AdminPages/MainPage.jsx";
 function App() {
   
 
@@ -28,12 +27,10 @@ function App() {
 
 
 
-          
-
           {/* Admin Side */}
           <Route path="/adminLogin" element={<Login/>}/>
           <Route path="/adminRegister" element={<Register/>}/>
-          <Route path="/adminDashboard" element={<Dashboard/>}/>
+          <Route path="/adminMainPage" element={<MainPage/>}/>
         </Routes>
       
 
