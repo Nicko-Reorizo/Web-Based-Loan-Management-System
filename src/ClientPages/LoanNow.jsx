@@ -15,7 +15,7 @@ export default function LoanNow() {
       >
         <form action="">
         <div
-          className=" bg-[#f0f0f0] rounded-[15px] p-10 grid grid-cols-2"
+          className=" bg-[#f0f0f0] rounded-[15px] p-10 grid grid-cols-2"  
           style={{
             boxShadow: "0 0 100px rgba(0,0,0,0.3)",
           }}

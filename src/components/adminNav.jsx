@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { BarChart3, Users, CheckCircle, LogOut } from "lucide-react";
+import { BarChart3, Users, CheckCircle, LogOut, FileText } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 export default function AdminNav({ setPage }) {
@@ -17,7 +17,7 @@ export default function AdminNav({ setPage }) {
   return (
     <div className="flex w-[15vw] h-[100vh] p-5">
       <div className="navPages flex flex-col space-y-3 w-full h-full">
-        <p className="inter-bold text-[35px]  p-5">LENDIFY</p>
+        <p className="inter-bold text-[35px] p-5">LENDIFY</p>
 
         <button
           onClick={() => {
@@ -39,6 +39,18 @@ export default function AdminNav({ setPage }) {
         >
           <Users size={20} />
           Borrowers
+        </button>
+
+        {/* ✅ NEW LOANS NAV */}
+        <button
+          onClick={() => {
+            setActive("loans");
+            setPage("loans");
+          }}
+          className={btnClass("loans")}
+        >
+          <FileText size={20} />
+          Loans
         </button>
 
         <button

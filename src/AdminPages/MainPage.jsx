@@ -2,6 +2,7 @@ import AdminNav from '../components/adminNav.jsx'
 import Dashboard from './Dashboard.jsx';
 import Borrowers from './Borrowers.jsx';
 import Approval from './Approval.jsx'
+import Loans from './Loans.jsx'
 import { useState } from "react";
 
 
@@ -20,6 +21,7 @@ export default function MainPage(){
         
         {page === "dashboard" && <Dashboard/>}
         {page === "borrowers" && <Borrowers/>}
+        {page === "loans" && <Loans/>}
         {page === "approval" && <Approval/>}
     </div>
 

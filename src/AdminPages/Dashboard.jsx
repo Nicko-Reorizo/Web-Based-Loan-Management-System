@@ -1,18 +1,23 @@
 import { CreditCard, DollarSign, Clock, Wallet } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 export default function Dashboard() {
-  const [stats] = useState({
-    activeLoans: 12,
-    disbursed: 125000,
-    pending: 5,
-    collected: 78000,
+  const [stats, setStats] = useState({
+    activeLoans: 0,
+    disbursed: 0,
+    pending: 0,
+    collected: 0,
   });
+
+  useEffect(() => {
+    fetch("http://localhost:5000/api/dashboard-stats")
+      .then((res) => res.json())
+      .then((data) => setStats(data))
+      .catch((err) => console.error("Failed to fetch dashboard stats:", err));
+  }, []);
 
   return (
     <div className="p-8 bg-[#f5f6f8] min-h-screen">
-
-      {/* Header */}
       <div className="mb-8">
         <h1 className="text-4xl font-bold text-gray-800">
           Dashboard Overview
@@ -22,10 +27,7 @@ export default function Dashboard() {
         </p>
       </div>
 
-      {/* Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-
-        {/* Active Loans */}
         <div className="bg-white rounded-2xl shadow-md p-8 flex items-center justify-between hover:shadow-xl transition">
           <div>
             <p className="text-gray-500 text-sm">Total Active Loans</p>
@@ -38,12 +40,11 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Disbursed */}
         <div className="bg-white rounded-2xl shadow-md p-8 flex items-center justify-between hover:shadow-xl transition">
           <div>
             <p className="text-gray-500 text-sm">Total Disbursed</p>
             <h2 className="text-3xl font-bold mt-2 text-gray-800">
-              ₱{stats.disbursed.toLocaleString()}
+              ₱{Number(stats.disbursed).toLocaleString()}
             </h2>
           </div>
           <div className="bg-green-100 p-4 rounded-full">
@@ -51,7 +52,6 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Pending */}
         <div className="bg-white rounded-2xl shadow-md p-8 flex items-center justify-between hover:shadow-xl transition">
           <div>
             <p className="text-gray-500 text-sm">Pending Applications</p>
@@ -64,19 +64,17 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Collected */}
         <div className="bg-white rounded-2xl shadow-md p-8 flex items-center justify-between hover:shadow-xl transition">
           <div>
             <p className="text-gray-500 text-sm">Total Collected</p>
             <h2 className="text-3xl font-bold mt-2 text-gray-800">
-              ₱{stats.collected.toLocaleString()}
+              ₱{Number(stats.collected).toLocaleString()}
             </h2>
           </div>
           <div className="bg-purple-100 p-4 rounded-full">
             <Wallet className="text-purple-700" size={28} />
           </div>
         </div>
-
       </div>
     </div>
   );

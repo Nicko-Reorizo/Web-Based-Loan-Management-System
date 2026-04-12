@@ -6,8 +6,8 @@ export default function Borrowers() {
   const [search, setSearch] = useState("");
 
   useEffect(() => {
-    // Replace with your real API endpoint
-    fetch("/api/borrowers")
+    
+    fetch("http://localhost:5000/api/borrowers")
       .then((res) => res.json())
       .then((data) => setBorrowers(data))
       .catch((err) => console.error("Failed to fetch borrowers:", err));
