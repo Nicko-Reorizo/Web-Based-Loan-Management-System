@@ -17,6 +17,7 @@ export default function LoanNow() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [isError, setIsError] = useState(false);
+  const [submittedLoanId, setSubmittedLoanId] = useState(null);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -27,82 +28,71 @@ export default function LoanNow() {
     }));
   };
 
-  const resetForm = () => {
-    setFormData({
-      fullName: "",
-      phoneNumber: "",
-      street: "",
-      city: "",
-      province: "",
-      zip: "",
-      amount: "",
-      loanTenure: "1",
-      loanType: "",
-    });
-  };
-
-const handleSubmit = async (e) => {
-  e.preventDefault();
-  setLoading(true);
-  setMessage("");
-  setIsError(false);
-
-  try {
-    const payload = {
-      fullName: formData.fullName.trim(),
-      phoneNumber: formData.phoneNumber.trim(),
-      street: formData.street.trim(),
-      city: formData.city.trim(),
-      province: formData.province.trim(),
-      zip: formData.zip.trim(),
-      amount: Number(formData.amount),
-      loanTenure: Number(formData.loanTenure),
-      loanType: Number(formData.loanType),
-    };
-
-    const response = await fetch("http://localhost:5000/api/loans/apply", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
-    });
-
-    const text = await response.text();
-    let data;
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setMessage("");
+    setIsError(false);
+    setSubmittedLoanId(null);
 
     try {
-      data = JSON.parse(text);
-    } catch {
-      throw new Error(text || "Server returned invalid response.");
+      const payload = {
+        fullName: formData.fullName.trim(),
+        phoneNumber: formData.phoneNumber.trim(),
+        street: formData.street.trim(),
+        city: formData.city.trim(),
+        province: formData.province.trim(),
+        zip: formData.zip.trim(),
+        amount: Number(formData.amount),
+        loanTenure: Number(formData.loanTenure),
+        loanType: Number(formData.loanType),
+      };
+
+      const response = await fetch("http://localhost:5000/api/loans/apply", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const text = await response.text();
+      let data;
+
+      try {
+        data = JSON.parse(text);
+      } catch {
+        throw new Error(text || "Server returned invalid response.");
+      }
+
+      if (!response.ok) {
+        throw new Error(data.message || "Failed to submit application.");
+      }
+
+      setMessage(data.message || "Loan application submitted successfully.");
+      setSubmittedLoanId(data?.data?.loanId ?? null);
+      setIsError(false);
+
+      setFormData({
+        fullName: "",
+        phoneNumber: "",
+        street: "",
+        city: "",
+        province: "",
+        zip: "",
+        amount: "",
+        loanTenure: "1",
+        loanType: "",
+      });
+    } catch (error) {
+      console.error("Loan application error:", error);
+      setMessage(error.message || "Something went wrong.");
+      setIsError(true);
+      setSubmittedLoanId(null);
+    } finally {
+      setLoading(false);
     }
-
-    if (!response.ok) {
-      throw new Error(data.message || "Failed to submit application.");
-    }
-
-    setMessage(data.message || "Loan application submitted successfully.");
-    setIsError(false);
-
-    setFormData({
-      fullName: "",
-      phoneNumber: "",
-      street: "",
-      city: "",
-      province: "",
-      zip: "",
-      amount: "",
-      loanTenure: "1",
-      loanType: "",
-    });
-  } catch (error) {
-    console.error("Loan application error:", error);
-    setMessage(error.message || "Something went wrong.");
-    setIsError(true);
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   return (
     <>
@@ -246,6 +236,17 @@ const handleSubmit = async (e) => {
               >
                 {message}
               </p>
+            )}
+
+            {!isError && submittedLoanId && (
+              <div className="col-span-2 mt-2 rounded-[12px] border border-green-500 bg-white p-4 text-center">
+                <p className="text-lg font-bold text-green-700">
+                  Loan ID: {submittedLoanId}
+                </p>
+                <p className="mt-2 text-sm text-gray-700">
+                  Please screenshot this Loan ID for reference and tracking.
+                </p>
+              </div>
             )}
           </div>
         </form>
