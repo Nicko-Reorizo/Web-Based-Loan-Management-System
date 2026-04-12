@@ -7,7 +7,7 @@ import { useState } from "react";
 
 export default function MainPage(){
 
-    const [page, setPage] = useState("approval");
+    const [page, setPage] = useState("dashboard");
     
 
 

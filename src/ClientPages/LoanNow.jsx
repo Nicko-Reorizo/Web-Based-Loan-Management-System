@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import Navbar from "../components/navbar.jsx";
 
 export default function LoanNow() {
+  
+  
   return (
     <>
       <Navbar></Navbar>
