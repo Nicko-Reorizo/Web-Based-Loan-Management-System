@@ -54,7 +54,7 @@ export default function Borrowers() {
           </div>
         </div>
 
-        <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+        <div className="overflow-hidden border border-slate-200 bg-white shadow-sm">
           <div className="overflow-x-auto">
             <div className="max-h-[75vh] overflow-y-auto">
               <table className="min-w-full text-left">
