@@ -35,29 +35,12 @@ const verifyPassword = (password, storedHash) => {
   );
 };
 
-const createUsersTable = `
-  CREATE TABLE IF NOT EXISTS USERS (
-    User_ID INT AUTO_INCREMENT PRIMARY KEY,
-    Full_Name VARCHAR(150) NOT NULL,
-    Email VARCHAR(150) NOT NULL UNIQUE,
-    Phone_Number VARCHAR(30) NOT NULL UNIQUE,
-    Password_Hash VARCHAR(255) NOT NULL,
-    Role ENUM('Borrower', 'Admin') NOT NULL,
-    Created_At TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-  )
-`;
-
-db.query(createUsersTable, (err) => {
-  if (err) {
-    console.error("Failed to ensure USERS table:", err);
-  }
-});
-
 const createBorrowerTable = `
   CREATE TABLE IF NOT EXISTS BORROWER (
     Client_ID INT AUTO_INCREMENT PRIMARY KEY,
     Client_FullName VARCHAR(150) NOT NULL,
     Email VARCHAR(150) NULL,
+    Password_Hash VARCHAR(255) NULL,
     Birth_Date DATE NULL,
     Gender VARCHAR(50) NULL,
     Civil_Status VARCHAR(50) NULL,
@@ -70,7 +53,6 @@ const createBorrowerTable = `
     Province VARCHAR(100) NOT NULL,
     ZIP VARCHAR(20) NOT NULL,
     Phone_Number VARCHAR(30) NOT NULL,
-    Birth_Date DATE NULL,
     Occupation VARCHAR(100) NULL,
     Employment_Status VARCHAR(100) NULL,
     Monthly_Salary DECIMAL(12,2) NULL,
@@ -86,6 +68,7 @@ const createBorrowerTable = `
 const ensureBorrowerProfileColumns = async () => {
   const extraColumns = [
     ["Email", "VARCHAR(150) NULL"],
+    ["Password_Hash", "VARCHAR(255) NULL"],
     ["Gender", "VARCHAR(50) NULL"],
     ["Civil_Status", "VARCHAR(50) NULL"],
     ["Valid_ID_Type", "VARCHAR(100) NULL"],
@@ -683,12 +666,12 @@ app.post("/client-register", async (req, res) => {
   let connection;
 
   try {
-    const [existingUsers] = await db.promise().query(
-      "SELECT User_ID FROM USERS WHERE Email = ? OR Phone_Number = ? LIMIT 1",
+    const [existingBorrowers] = await db.promise().query(
+      "SELECT Client_ID FROM BORROWER WHERE Email = ? OR Phone_Number = ? LIMIT 1",
       [email, phoneNumber],
     );
 
-    if (existingUsers.length > 0) {
+    if (existingBorrowers.length > 0) {
       return res.status(400).json({
         message: "Account already registered. Please log in instead.",
       });
@@ -698,18 +681,12 @@ app.post("/client-register", async (req, res) => {
     await connection.beginTransaction();
 
     const passwordHash = hashPassword(password);
-    const [userResult] = await connection.query(
-      "INSERT INTO USERS (Full_Name, Email, Phone_Number, Password_Hash, Role) VALUES (?, ?, ?, ?, ?)",
-      [fullName, email, phoneNumber, passwordHash, role],
-    );
-
-    const userId = userResult.insertId;
     const [borrowerResult] = await connection.query(
       `INSERT INTO BORROWER
        (
-         User_ID,
          Client_FullName,
          Email,
+         Password_Hash,
          Phone_Number,
          Birth_Date,
          Gender,
@@ -733,9 +710,9 @@ app.post("/client-register", async (req, res) => {
        )
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
-        userId,
         fullName,
         email,
+        passwordHash,
         phoneNumber,
         birthDate,
         gender,
@@ -765,7 +742,7 @@ app.post("/client-register", async (req, res) => {
       message: "Account created successfully.",
       clientId: borrowerResult.insertId,
       user: {
-        id: userId,
+        id: borrowerResult.insertId,
         name: fullName,
         email,
         phoneNumber,
