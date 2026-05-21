@@ -32,7 +32,7 @@ function App() {
           <Route path="/loan" element={<LoanNow/>}/>
           <Route path="/details" element={<Details/>} />
           <Route path="/clientDashboard" element={<ClientDashboard />} />
-
+          <Route path="/loan" element={<LoanNow />} />
 
           {/* Admin Side */}
           <Route path="/adminLogin" element={<AdminLogin/>}/>

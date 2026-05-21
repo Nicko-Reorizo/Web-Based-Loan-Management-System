@@ -3,6 +3,7 @@ import Dashboard from './Dashboard.jsx';
 import Borrowers from './Borrowers.jsx';
 import Approval from './Approval.jsx'
 import Loans from './Loans.jsx'
+import LoanTypes from "./LoanTypes.jsx";
 import { useState } from "react";
 
 
@@ -23,6 +24,7 @@ export default function MainPage(){
         {page === "borrowers" && <Borrowers/>}
         {page === "loans" && <Loans/>}
         {page === "approval" && <Approval/>}
+        {page === "loanTypes" && <LoanTypes />}
     </div>
 
 

@@ -26,7 +26,7 @@ export default function Navbar() {
         
         <button
           className="rounded-2xl bg-white px-3 py-1 text-[15px] font-bold text-[#126d71]"
-          onClick={() => goTo("/loan")}
+          onClick={() => goTo("/signup")}
         >
           Loan Now
         </button>
@@ -52,7 +52,7 @@ export default function Navbar() {
           
           <button
             className="w-fit rounded-2xl bg-white px-3 py-1 text-[15px] font-bold text-[#126d71]"
-            onClick={() => goTo("/loan")}
+            onClick={() => goTo("/signup")}
           >
             Loan Now
           </button>

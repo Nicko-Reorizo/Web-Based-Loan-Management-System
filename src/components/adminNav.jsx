@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { BarChart3, Users, CheckCircle, LogOut, FileText } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { Tags } from "lucide-react";
 
 export default function AdminNav({ setPage }) {
   const [active, setActive] = useState("dashboard");
@@ -63,7 +64,16 @@ export default function AdminNav({ setPage }) {
           <CheckCircle size={20} />
           Approval
         </button>
-
+        <button
+  onClick={() => {
+    setActive("loanTypes");
+    setPage("loanTypes");
+  }}
+  className={btnClass("loanTypes")}
+>
+  <Tags size={20} />
+  Loan Types
+</button>
         <button
           className="flex text-[17.5px] p-3 px-5 inter-bold gap-x-4 items-center rounded-[50px] transition-all text-red-500 hover:bg-red-50 mt-auto"
           onClick={() => navigate("/adminLogin")}

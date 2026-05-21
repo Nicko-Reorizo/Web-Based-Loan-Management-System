@@ -1138,7 +1138,7 @@ app.post("/api/payments", (req, res) => {
   });
 });
 
-// Upload Application Form
+// Upload Loan Application Form
 app.post("/api/loans/apply", async (req, res) => {
   try {
     const {
@@ -1151,7 +1151,8 @@ app.post("/api/loans/apply", async (req, res) => {
       zip,
       amount,
       loanTenure,
-      loanType,
+      loanTypeId,
+      paymentFrequency,
     } = req.body;
 
     if (
@@ -1164,53 +1165,61 @@ app.post("/api/loans/apply", async (req, res) => {
       !zip ||
       !amount ||
       !loanTenure ||
-      !loanType
+      !loanTypeId ||
+      !paymentFrequency
     ) {
-      return res.status(400).json({
-        success: false,
-        message: "All fields are required.",
-      });
+      return res.status(400).json({ message: "All fields are required." });
     }
 
     const parsedAmount = Number(amount);
     const parsedLoanTenure = Number(loanTenure);
-    const parsedLoanType = Number(loanType);
+    const parsedLoanTypeId = Number(loanTypeId);
 
-    if (Number.isNaN(parsedAmount) || parsedAmount <= 0) {
+    if (parsedAmount <= 0 || parsedAmount > 100000) {
       return res.status(400).json({
-        success: false,
-        message: "Amount must be greater than 0.",
+        message: "Amount must be from 1 to 100,000 only.",
       });
     }
 
-    if (Number.isNaN(parsedLoanTenure) || parsedLoanTenure <= 0) {
+    const allowedFrequencies = [
+      "Weekly",
+      "Bi-Monthly",
+      "Monthly",
+      "Quarterly",
+      "Semi-Annual",
+      "Annual",
+    ];
+
+    if (!allowedFrequencies.includes(paymentFrequency)) {
       return res.status(400).json({
-        success: false,
-        message: "Loan tenure must be greater than 0.",
+        message: "Invalid payment frequency.",
       });
     }
 
-    let loanTypeId;
-    let interestRate;
+    const [loanTypeRows] = await db.promise().query(
+      `
+      SELECT Loan_Type_ID, Loan_Type_Name, Interest_Rate
+      FROM LOAN_TYPE
+      WHERE Loan_Type_ID = ?
+      LIMIT 1
+      `,
+      [parsedLoanTypeId]
+    );
 
-    if (parsedLoanType === 3) {
-      loanTypeId = 1;
-      interestRate = 3;
-    } else if (parsedLoanType === 5) {
-      loanTypeId = 2;
-      interestRate = 5;
-    } else {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid loan type selected.",
-      });
+    if (loanTypeRows.length === 0) {
+      return res.status(400).json({ message: "Invalid loan type selected." });
     }
+
+    const loanType = loanTypeRows[0];
+    const interestRate = Number(loanType.Interest_Rate);
 
     const [existingBorrowers] = await db.promise().query(
-      `SELECT Client_ID
-       FROM BORROWER
-       WHERE Client_FullName = ? AND Phone_Number = ?
-       LIMIT 1`,
+      `
+      SELECT Client_ID
+      FROM BORROWER
+      WHERE Client_FullName = ? AND Phone_Number = ?
+      LIMIT 1
+      `,
       [fullName, phoneNumber]
     );
 
@@ -1220,9 +1229,11 @@ app.post("/api/loans/apply", async (req, res) => {
       clientId = existingBorrowers[0].Client_ID;
     } else {
       const [borrowerResult] = await db.promise().query(
-        `INSERT INTO BORROWER
-         (Client_FullName, Street, Barangay, City, Province, ZIP, Phone_Number)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        `
+        INSERT INTO BORROWER
+        (Client_FullName, Street, Barangay, City, Province, ZIP, Phone_Number)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+        `,
         [fullName, street, barangay, city, province, zip, phoneNumber]
       );
 
@@ -1230,69 +1241,82 @@ app.post("/api/loans/apply", async (req, res) => {
     }
 
     const today = new Date();
-    const maturityDate = new Date();
-    maturityDate.setMonth(maturityDate.getMonth() + parsedLoanTenure);
+    const firstDueDate = new Date(today);
+    const maturityDate = new Date(today);
+
+    const addTermToDate = (date, frequency, term) => {
+      if (frequency === "Weekly") date.setDate(date.getDate() + term * 7);
+      if (frequency === "Bi-Monthly") date.setDate(date.getDate() + term * 15);
+      if (frequency === "Monthly") date.setMonth(date.getMonth() + term);
+      if (frequency === "Quarterly") date.setMonth(date.getMonth() + term * 3);
+      if (frequency === "Semi-Annual") date.setMonth(date.getMonth() + term * 6);
+      if (frequency === "Annual") date.setFullYear(date.getFullYear() + term);
+    };
+
+    addTermToDate(firstDueDate, paymentFrequency, 1);
+    addTermToDate(maturityDate, paymentFrequency, parsedLoanTenure);
 
     const formattedToday = today.toISOString().split("T")[0];
-    const formattedMaturity = maturityDate.toISOString().split("T")[0];
+    const formattedFirstDueDate = firstDueDate.toISOString().split("T")[0];
+    const formattedMaturityDate = maturityDate.toISOString().split("T")[0];
 
-    const interestAmount =
-      parsedAmount * (interestRate / 100) * parsedLoanTenure;
-
+    const interestAmount = parsedAmount * (interestRate / 100) * parsedLoanTenure;
     const totalAmount = parsedAmount + interestAmount;
-    const totalMonthlyAmortization = totalAmount / parsedLoanTenure;
+    const amortization = totalAmount / parsedLoanTenure;
 
     const [loanResult] = await db.promise().query(
-      `INSERT INTO LOAN
-       (
-         Client_ID,
-         Loan_Type_ID,
-         Officer_ID,
-         Principal_Amount,
-         Total_Monthly_Amortization,
-         Disbursement_Date,
-         Maturity_Date,
-         Balance,
-         Interest_Amount,
-         Date_Approved,
-         Loan_Status,
-         Loan_Tenure
-       )
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `
+      INSERT INTO LOAN
+      (
+        Client_ID,
+        Loan_Type_ID,
+        Officer_ID,
+        Principal_Amount,
+        Total_Monthly_Amortization,
+        Disbursement_Date,
+        Maturity_Date,
+        Balance,
+        Interest_Amount,
+        Date_Approved,
+        Loan_Status,
+        Loan_Tenure,
+        Payment_Frequency,
+        First_Due_Date
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `,
       [
         clientId,
-        loanTypeId,
+        parsedLoanTypeId,
         1,
         parsedAmount,
-        totalMonthlyAmortization,
+        amortization,
         formattedToday,
-        formattedMaturity,
+        formattedMaturityDate,
         totalAmount,
         interestAmount,
-        "2000-01-01",
+        null,
         "Pending",
         parsedLoanTenure,
+        paymentFrequency,
+        formattedFirstDueDate,
       ]
     );
 
-    return res.status(201).json({
-      success: true,
+    res.status(201).json({
       message: "Loan application submitted successfully.",
       data: {
-        borrowerId: clientId,
         loanId: loanResult.insertId,
-        loanTypeId,
+        borrowerId: clientId,
         interestRate,
         interestAmount,
         totalAmount,
-        totalMonthlyAmortization,
+        amortization,
         status: "Pending",
       },
     });
   } catch (error) {
-    console.error("Apply loan error:", error);
-    return res.status(500).json({
-      success: false,
+    res.status(500).json({
       message: error.message || "Server error.",
     });
   }
@@ -1336,6 +1360,53 @@ app.get("/api/loan-details/loan/:loanId", (req, res) => {
   });
 });
 
+app.get("/api/loan-types", (req, res) => {
+  const sql = `
+    SELECT Loan_Type_ID, Loan_Type_Name, Interest_Rate
+    FROM LOAN_TYPE
+    ORDER BY Loan_Type_Name ASC
+  `;
+
+  db.query(sql, (err, results) => {
+    if (err) {
+      return res.status(500).json({ message: "Failed to fetch loan types." });
+    }
+
+    res.json(results);
+  });
+});
+
+//loan type table
+app.post("/api/loan-types", (req, res) => {
+  const { loanTypeName, interestRate } = req.body;
+  const parsedRate = Number(interestRate);
+
+  if (!loanTypeName || Number.isNaN(parsedRate) || parsedRate <= 0) {
+    return res.status(400).json({
+      message: "Loan type name and valid interest rate are required.",
+    });
+  }
+
+  const sql = `
+    INSERT INTO LOAN_TYPE (Loan_Type_Name, Interest_Rate)
+    VALUES (?, ?)
+  `;
+
+  db.query(sql, [loanTypeName, parsedRate], (err, result) => {
+    if (err) {
+      if (err.code === "ER_DUP_ENTRY") {
+        return res.status(400).json({ message: "Loan type already exists." });
+      }
+
+      return res.status(500).json({ message: "Failed to add loan type." });
+    }
+
+    res.status(201).json({
+      message: "Loan type added successfully.",
+      loanTypeId: result.insertId,
+    });
+  });
+});
 
 app.listen(5000, () => {
   console.log("Server running on http://localhost:5000");

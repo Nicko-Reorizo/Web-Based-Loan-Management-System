@@ -1,29 +1,80 @@
-import { useState } from "react";
-import Navbar from "../components/navbar.jsx";
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { ArrowRight, CalendarDays, CheckCircle, ShieldCheck, WalletCards } from "lucide-react";
+import ClientNav from "../components/clientNav.jsx";
+
+const frequencyOptions = [
+  { value: "Weekly", label: "Weekly", unit: "week" },
+  { value: "Bi-Monthly", label: "Bi-Monthly", unit: "half-month" },
+  { value: "Monthly", label: "Monthly", unit: "month" },
+  { value: "Quarterly", label: "Quarterly", unit: "quarter" },
+  { value: "Semi-Annual", label: "Semi-Annual", unit: "half-year" },
+  { value: "Annual", label: "Annual", unit: "year" },
+];
 
 export default function LoanNow() {
-  const storedBorrowerInfo = localStorage.getItem("borrowerInfo");
-  const borrowerInfo = storedBorrowerInfo ? JSON.parse(storedBorrowerInfo) : null;
+  const navigate = useNavigate();
+  const storedUser = localStorage.getItem("authUser");
+  const user = storedUser ? JSON.parse(storedUser) : null;
+
+  const [loanTypes, setLoanTypes] = useState([]);
   const [formData, setFormData] = useState({
-    fullName: borrowerInfo?.fullName || "",
-    phoneNumber: borrowerInfo?.phoneNumber || "",
-    street: borrowerInfo?.street || "",
-    barangay: borrowerInfo?.barangay || "",
-    city: borrowerInfo?.city || "",
-    province: borrowerInfo?.province || "",
-    zip: borrowerInfo?.zip || "",
     amount: "",
+    loanTypeId: "",
+    paymentFrequency: "Monthly",
     loanTenure: "1",
-    loanType: "",
   });
 
-  const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [isError, setIsError] = useState(false);
-  const [submittedLoanId, setSubmittedLoanId] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!user?.id) {
+      navigate("/login");
+      return;
+    }
+
+    fetch("http://localhost:5000/api/loan-types")
+      .then((res) => res.json())
+      .then((data) => setLoanTypes(Array.isArray(data) ? data : []))
+      .catch(() => setLoanTypes([]));
+  }, [user?.id, navigate]);
+
+  const selectedLoanType = useMemo(() => {
+    return loanTypes.find(
+      (type) => String(type.Loan_Type_ID) === String(formData.loanTypeId)
+    );
+  }, [loanTypes, formData.loanTypeId]);
+
+  const selectedFrequency = frequencyOptions.find(
+    (item) => item.value === formData.paymentFrequency
+  );
+
+  const preview = useMemo(() => {
+    const amount = Number(formData.amount);
+    const term = Number(formData.loanTenure);
+    const rate = Number(selectedLoanType?.Interest_Rate || 0);
+
+    if (!amount || !term || !rate) return null;
+
+    const interest = amount * (rate / 100) * term;
+    const total = amount + interest;
+    const payment = total / term;
+
+    return { interest, total, payment };
+  }, [formData.amount, formData.loanTenure, selectedLoanType]);
+
+  const peso = (value) =>
+    Number(value || 0).toLocaleString("en-PH", {
+      style: "currency",
+      currency: "PHP",
+    });
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+
+    if (name === "amount" && Number(value) > 100000) return;
 
     setFormData((prev) => ({
       ...prev,
@@ -33,239 +84,245 @@ export default function LoanNow() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
     setMessage("");
     setIsError(false);
-    setSubmittedLoanId(null);
+    setLoading(true);
 
     try {
-      const payload = {
-        fullName: formData.fullName.trim(),
-        phoneNumber: formData.phoneNumber.trim(),
-        street: formData.street.trim(),
-        barangay: formData.barangay.trim(),
-        city: formData.city.trim(),
-        province: formData.province.trim(),
-        zip: formData.zip.trim(),
-        amount: Number(formData.amount),
-        loanTenure: Number(formData.loanTenure),
-        loanType: Number(formData.loanType),
-      };
-
-      const response = await fetch("http://localhost:5000/api/loans/apply", {
+      const res = await fetch("http://localhost:5000/api/loans/apply", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          clientId: user.id,
+          amount: Number(formData.amount),
+          loanTypeId: Number(formData.loanTypeId),
+          paymentFrequency: formData.paymentFrequency,
+          loanTenure: Number(formData.loanTenure),
+        }),
       });
 
-      const text = await response.text();
-      let data;
+      const data = await res.json();
 
-      try {
-        data = JSON.parse(text);
-      } catch {
-        throw new Error(text || "Server returned invalid response.");
+      if (!res.ok) {
+        throw new Error(data.message || "Failed to submit loan.");
       }
 
-      if (!response.ok) {
-        throw new Error(data.message || "Failed to submit application.");
-      }
-
-      setMessage(data.message || "Loan application submitted successfully.");
-      setSubmittedLoanId(data?.data?.loanId ?? null);
-      setIsError(false);
+      setMessage(`Loan submitted successfully. Loan ID: ${data.data.loanId}`);
 
       setFormData({
-        fullName: borrowerInfo?.fullName || "",
-        phoneNumber: borrowerInfo?.phoneNumber || "",
-        street: borrowerInfo?.street || "",
-        barangay: borrowerInfo?.barangay || "",
-        city: borrowerInfo?.city || "",
-        province: borrowerInfo?.province || "",
-        zip: borrowerInfo?.zip || "",
         amount: "",
+        loanTypeId: "",
+        paymentFrequency: "Monthly",
         loanTenure: "1",
-        loanType: "",
       });
     } catch (error) {
-      console.error("Loan application error:", error);
-      setMessage(error.message || "Something went wrong.");
       setIsError(true);
-      setSubmittedLoanId(null);
+      setMessage(error.message);
     } finally {
       setLoading(false);
     }
   };
 
+  const inputClass =
+    "w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-[#00b386] focus:ring-4 focus:ring-[#00b386]/10";
+
+  const labelClass = "mb-2 block text-sm font-semibold text-slate-700";
+
   return (
     <>
-      <Navbar />
+      <ClientNav />
 
-      <div className="min-h-screen bg-white flex justify-center items-center py-10 px-4">
-        <form onSubmit={handleSubmit} className="w-full max-w-4xl">
-          <div
-            className="bg-[#f0f0f0] rounded-[15px] p-10 grid grid-cols-2 gap-4"
-            style={{ boxShadow: "0 0 100px rgba(0,0,0,0.3)" }}
-          >
-            <p className="text-center col-span-2 inter-bold mb-10 text-[25px]">
-              LENDING FORM
+      <div className="min-h-screen bg-gradient-to-br from-[#e9fff7] via-white to-[#edf7ff] px-4 py-10">
+        <div className="mx-auto max-w-6xl">
+          <div className="mb-8 rounded-[32px] bg-gradient-to-br bg-[#126d71]  p-8 text-white shadow-2xl">
+            <div className="mb-8 flex items-center gap-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/20">
+                <WalletCards size={26} />
+              </div>
+
+              <div>
+                <p className="text-sm text-white/80">Welcome, {user?.name}</p>
+                <h1 className="text-3xl font-black">Apply for a Loan!</h1>
+              </div>
+            </div>
+
+            <h2 className="mb-4 max-w-2xl text-4xl font-black leading-tight md:text-5xl">
+              Get funds up to ₱100,000
+            </h2>
+
+            <p className="mb-8 max-w-xl text-white/90">
+              Choose your loan type, payment schedule, and term. Review the estimate before sending.
             </p>
 
-            <p className="col-span-2 ml-3 inter-bold">Personal Details</p>
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div className="rounded-3xl bg-white/15 p-5 backdrop-blur">
+                <ShieldCheck className="mb-3" />
+                <p className="font-bold">Safe Process</p>
+                <p className="text-sm text-white/80">Admin approval required</p>
+              </div>
 
-            <div className="input-group">
-              <input
-                type="text"
-                name="fullName"
-                value={formData.fullName}
-                onChange={handleChange}
-                required
-              />
-              <label>Full Name</label>
+              <div className="rounded-3xl bg-white/15 p-5 backdrop-blur">
+                <CalendarDays className="mb-3" />
+                <p className="font-bold">Flexible Terms</p>
+                <p className="text-sm text-white/80">Weekly to yearly</p>
+              </div>
+
+              <div className="rounded-3xl bg-white/15 p-5 backdrop-blur">
+                <CheckCircle className="mb-3" />
+                <p className="font-bold">Easy Apply</p>
+                <p className="text-sm text-white/80">Loan details only</p>
+              </div>
             </div>
+          </div>
 
-            <div className="input-group">
-              <input
-                type="text"
-                name="phoneNumber"
-                value={formData.phoneNumber}
-                onChange={handleChange}
-                required
-              />
-              <label>Phone Number</label>
-            </div>
+          <div className="grid gap-8 lg:grid-cols-[1fr_420px]">
+            <form onSubmit={handleSubmit} className="rounded-[32px] bg-white p-6 shadow-2xl md:p-8">
+              <h2 className="mb-6 text-2xl font-black text-slate-900">
+                Loan Details
+              </h2>
 
-            <div className="input-group">
-              <input
-                type="text"
-                name="street"
-                value={formData.street}
-                onChange={handleChange}
-                required
-              />
-              <label>Street</label>
-            </div>
+              <div className="grid gap-5 md:grid-cols-2">
+                <div>
+                  <label className={labelClass}>Amount</label>
+                  <input
+                    type="number"
+                    name="amount"
+                    value={formData.amount}
+                    onChange={handleChange}
+                    min="1"
+                    max="100000"
+                    required
+                    className={inputClass}
+                    placeholder="Maximum ₱100,000"
+                  />
+                </div>
 
-            <div className="input-group">
-              <input
-                type="text"
-                name="barangay"
-                value={formData.barangay}
-                onChange={handleChange}
-                required
-              />
-              <label>Barangay</label>
-            </div>
+                <div>
+                  <label className={labelClass}>Loan Type</label>
+                  <select
+                    name="loanTypeId"
+                    value={formData.loanTypeId}
+                    onChange={handleChange}
+                    required
+                    className={inputClass}
+                  >
+                    <option value="">Select Loan Type</option>
+                    {loanTypes.map((type) => (
+                      <option key={type.Loan_Type_ID} value={type.Loan_Type_ID}>
+                        {type.Loan_Type_Name} - {Number(type.Interest_Rate)}%
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-            <div className="input-group">
-              <input
-                type="text"
-                name="city"
-                value={formData.city}
-                onChange={handleChange}
-                required
-              />
-              <label>City</label>
-            </div>
+                <div>
+                  <label className={labelClass}>Payment Frequency</label>
+                  <select
+                    name="paymentFrequency"
+                    value={formData.paymentFrequency}
+                    onChange={handleChange}
+                    required
+                    className={inputClass}
+                  >
+                    {frequencyOptions.map((frequency) => (
+                      <option key={frequency.value} value={frequency.value}>
+                        {frequency.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-            <div className="input-group">
-              <input
-                type="text"
-                name="province"
-                value={formData.province}
-                onChange={handleChange}
-                required
-              />
-              <label>Province</label>
-            </div>
+                <div>
+                  <label className={labelClass}>
+                    Term in {selectedFrequency?.unit || "period"}s
+                  </label>
+                  <input
+                    type="number"
+                    name="loanTenure"
+                    value={formData.loanTenure}
+                    onChange={handleChange}
+                    min="1"
+                    max="120"
+                    required
+                    className={inputClass}
+                    placeholder="Example: 6"
+                  />
+                </div>
+              </div>
 
-            <div className="input-group">
-              <input
-                type="text"
-                name="zip"
-                value={formData.zip}
-                onChange={handleChange}
-                required
-              />
-              <label>ZIP</label>
-            </div>
-
-            <p className="col-span-2 ml-3 mt-10 inter-bold">Loan Details</p>
-
-            <div className="input-group">
-              <input
-                type="number"
-                name="amount"
-                value={formData.amount}
-                onChange={handleChange}
-                min="1"
-                required
-              />
-              <label>Amount</label>
-            </div>
-
-            <div className="input-group">
-              <select
-                name="loanTenure"
-                value={formData.loanTenure}
-                onChange={handleChange}
-                required
+              <button
+                type="submit"
+                disabled={loading}
+                className="mt-8 flex w-full items-center justify-center gap-2 rounded-2xl  bg-[#ff6f61]  px-6 py-4 text-lg font-black text-white shadow-lg transition hover:scale-[1.01] disabled:cursor-not-allowed disabled:opacity-60"
               >
-                <option value="1">1 Month</option>
-                <option value="3">3 Months</option>
-                <option value="6">6 Months</option>
-                <option value="12">12 Months</option>
-              </select>
-              <label>Loan Tenure</label>
-            </div>
+                {loading ? "Submitting..." : "Submit Loan Application"}
+                {!loading && <ArrowRight size={20} />}
+              </button>
 
-            <div className="input-group-1 col-span-2">
-              <select
-                name="loanType"
-                value={formData.loanType}
-                onChange={handleChange}
-                required
-              >
-                <option value="" disabled>
-                  Select Type
-                </option>
-                <option value="3">Personal Loan (3%/mo)</option>
-                <option value="5">Emergency Loan (5%/mo)</option>
-              </select>
-              <label>Loan Type</label>
-            </div>
-
-            <input
-              type="submit"
-              value={loading ? "Submitting..." : "Submit Application"}
-              disabled={loading}
-              className="bg-[#ff6f61] text-white col-span-2 h-[50px] inter-semibold rounded-[10px] cursor-pointer mt-5 disabled:opacity-60"
-            />
-
-            {message && (
-              <p
-                className={`col-span-2 text-center mt-4 text-sm ${
-                  isError ? "text-red-600" : "text-green-600"
-                }`}
-              >
-                {message}
-              </p>
-            )}
-
-            {!isError && submittedLoanId && (
-              <div className="col-span-2 mt-2 rounded-[12px] border border-green-500 bg-white p-4 text-center">
-                <p className="text-lg font-bold text-green-700">
-                  Loan ID: {submittedLoanId}
+              {message && (
+                <p
+                  className={`mt-5 rounded-2xl p-4 text-center font-semibold ${
+                    isError ? "bg-red-50 text-red-600" : "bg-green-50 text-green-700"
+                  }`}
+                >
+                  {message}
                 </p>
-                <p className="mt-2 text-sm text-gray-700">
-                  Please screenshot this Loan ID for reference and tracking.
+              )}
+            </form>
+
+            <div className="rounded-[32px] bg-white p-6 shadow-2xl">
+              <p className="mb-2 text-sm font-bold text-[#00b386]">
+                Loan Summary
+              </p>
+
+              <h3 className="mb-6 text-2xl font-black text-slate-900">
+                Your Estimate
+              </h3>
+
+              <div className="mb-5 rounded-3xl bg-slate-50 p-5">
+                <p className="text-sm text-slate-500">Loan Amount</p>
+                <p className="text-4xl font-black text-slate-900">
+                  {peso(formData.amount)}
+                </p>
+                <p className="mt-2 text-xs text-slate-500">
+                  Maximum amount: ₱100,000
                 </p>
               </div>
-            )}
+
+              <div className="space-y-3">
+                <div className="flex justify-between rounded-2xl bg-slate-50 p-4">
+                  <span className="text-slate-500">Loan Type</span>
+                  <span className="font-bold text-slate-800">
+                    {selectedLoanType?.Loan_Type_Name || "Not selected"}
+                  </span>
+                </div>
+
+                <div className="flex justify-between rounded-2xl bg-slate-50 p-4">
+                  <span className="text-slate-500">Interest Rate</span>
+                  <span className="font-bold text-slate-800">
+                    {selectedLoanType ? `${Number(selectedLoanType.Interest_Rate)}%` : "0%"}
+                  </span>
+                </div>
+
+                <div className="flex justify-between rounded-2xl bg-slate-50 p-4">
+                  <span className="text-slate-500">Payment</span>
+                  <span className="font-bold text-slate-800">
+                    {preview ? peso(preview.payment) : peso(0)}
+                  </span>
+                </div>
+
+                <div className="flex justify-between rounded-2xl bg-[#e8fff6] p-4">
+                  <span className="font-bold text-[#007a5e]">Total Payable</span>
+                  <span className="font-black text-[#007a5e]">
+                    {preview ? peso(preview.total) : peso(0)}
+                  </span>
+                </div>
+              </div>
+            </div>
           </div>
-        </form>
+        </div>
       </div>
     </>
   );
