@@ -462,8 +462,8 @@ app.get("/api/dashboard-stats", (req, res) => {
 });
 
 
-// login and register
-app.post("/register", (req, res) => {
+// client login and register
+app.post("/client-register", (req, res) => {
   const { fullName, email, phoneNumber, password, confirmPassword } = req.body;
   const role = "Borrower";
 
@@ -528,7 +528,7 @@ app.post("/register", (req, res) => {
   });
 });
 
-app.post("/login", (req, res) => {
+app.post("/client-login", (req, res) => {
   const { email, password } = req.body;
 
   if (!email || !password) {
@@ -573,6 +573,88 @@ app.post("/login", (req, res) => {
     return res.status(200).json({
       message: "Login successful.",
       user: responseUser,
+    });
+  });
+});
+
+// admin login and register
+app.post("/register", (req, res) => {
+  const { fullName, username, password } = req.body;
+
+  if (!fullName || !username || !password) {
+    return res.status(400).json({
+      message: "All fields are required.",
+    });
+  }
+
+  const checkUserSql =
+    "SELECT * FROM LOAN_OFFICER WHERE Officer_Username = ?";
+
+  db.query(checkUserSql, [username], (err, result) => {
+    if (err) {
+      console.log("Register check error:", err);
+      return res.status(500).json({
+        message: "Database error.",
+      });
+    }
+
+    if (result.length > 0) {
+      return res.status(400).json({
+        message: "Username already exists.",
+      });
+    }
+
+    const insertSql =
+      "INSERT INTO LOAN_OFFICER (Officer_Name, Officer_Username, Officer_Password) VALUES (?, ?, ?)";
+
+    db.query(insertSql, [fullName, username, password], (err) => {
+      if (err) {
+        console.log("Register insert error:", err);
+        return res.status(500).json({
+          message: "Failed to register.",
+        });
+      }
+
+      return res.status(201).json({
+        message: "Registration successful.",
+      });
+    });
+  });
+});
+
+app.post("/login", (req, res) => {
+  const { username, password } = req.body;
+
+  if (!username || !password) {
+    return res.status(400).json({
+      message: "Username and password are required.",
+    });
+  }
+
+  const sql =
+    "SELECT * FROM LOAN_OFFICER WHERE Officer_Username = ? AND Officer_Password = ?";
+
+  db.query(sql, [username, password], (err, result) => {
+    if (err) {
+      console.log("Login error:", err);
+      return res.status(500).json({
+        message: "Database error.",
+      });
+    }
+
+    if (result.length > 0) {
+      return res.status(200).json({
+        message: "Login successful.",
+        user: {
+          id: result[0].Officer_ID,
+          name: result[0].Officer_Name,
+          username: result[0].Officer_Username,
+        },
+      });
+    }
+
+    return res.status(401).json({
+      message: "Invalid username or password.",
     });
   });
 });

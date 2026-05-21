@@ -3,20 +3,24 @@ import { useState } from "react";
 
 export default function Login() {
   const navigate = useNavigate();
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [message, setMessage] = useState("");
+  const [isError, setIsError] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setMessage("");
+    setIsError(false);
 
     try {
-      const response = await fetch("http://localhost:5000/login", {
+      const response = await fetch("http://localhost:5000/client-login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          username,
+          email,
           password,
         }),
       });
@@ -24,18 +28,19 @@ export default function Login() {
       const data = await response.json();
 
       if (!response.ok) {
-        alert(data.message);
+        setMessage(data.message);
+        setIsError(true);
         return;
       }
 
-      localStorage.setItem("officerId", data.user.id);
-      localStorage.setItem("officerName", data.user.name);
+      localStorage.setItem("authUser", JSON.stringify(data.user));
+      localStorage.setItem("userRole", data.user.role);
 
-      alert("Login successful.");
-      navigate("/adminMainPage");
+      navigate("/borrower-info");
     } catch (error) {
       console.log(error);
-      alert("Server error.");
+      setMessage("Server error.");
+      setIsError(true);
     }
   };
 
@@ -56,21 +61,33 @@ export default function Login() {
               Welcome back!
             </p>
             <p className="inter-reg text-[#00000075] col-span-2 text-center">
-              Please log in to your admin account.
+              Please log in to your borrower account
             </p>
+
+            {message && (
+              <p
+                className={`col-span-2 mt-5 rounded-lg p-3 text-center text-sm ${
+                  isError
+                    ? "bg-red-50 text-red-700"
+                    : "bg-green-50 text-green-700"
+                }`}
+              >
+                {message}
+              </p>
+            )}
 
             <div className="flex flex-col col-span-2 ">
               <form onSubmit={handleSubmit} className="flex flex-col gap-y-4">
                 <div className="LoginInput flex flex-col mt-10">
                   <label htmlFor="" className="inter-bold opacity-65 text-sm">
-                    Username
+                    Email
                   </label>
                   <input
-                    type="text"
+                    type="email"
                     className="border border-[#aaaaaa3a] text-sm p-3 rounded-sm"
-                    placeholder="Enter your Username."
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
+                    placeholder="Enter your Email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
                     required
                   />
                 </div>
@@ -81,7 +98,7 @@ export default function Login() {
                   <input
                     type="password"
                     className="border border-[#aaaaaa3a] text-sm p-3 rounded-sm"
-                    placeholder="Enter your Password."
+                    placeholder="Enter your Password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
@@ -90,8 +107,8 @@ export default function Login() {
 
                 <input
                   type="submit"
-                  value="Sign in."
-                  className="bg-[#ff6f61] text-white col-span-2 h-[50px]  w-full inter-semibold rounded-[10px] cursor-pointer mt-5"
+                  value="Sign in"
+                  className="bg-[#ff6f61] text-white col-span-2 h-[50px] w-full inter-semibold rounded-[10px] cursor-pointer mt-5"
                 />
               </form>
 
@@ -100,9 +117,9 @@ export default function Login() {
                 <button
                   type="button"
                   className="underline text-blue-800"
-                  onClick={() => navigate("/adminRegister")}
+                  onClick={() => navigate("/signup")}
                 >
-                  Sign up.
+                  Sign up
                 </button>
               </div>
             </div>
