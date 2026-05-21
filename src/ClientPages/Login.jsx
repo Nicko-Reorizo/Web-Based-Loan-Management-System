@@ -36,7 +36,7 @@ export default function Login() {
       localStorage.setItem("authUser", JSON.stringify(data.user));
       localStorage.setItem("userRole", data.user.role);
 
-      navigate("/borrower-info");
+      navigate("/clientDashboard");
     } catch (error) {
       console.log(error);
       setMessage("Server error.");

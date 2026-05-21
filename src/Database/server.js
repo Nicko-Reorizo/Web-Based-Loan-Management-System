@@ -463,11 +463,60 @@ app.get("/api/dashboard-stats", (req, res) => {
 
 
 // client login and register
-app.post("/client-register", (req, res) => {
-  const { fullName, email, phoneNumber, password, confirmPassword } = req.body;
+app.post("/client-register", async (req, res) => {
+  const {
+    fullName,
+    email,
+    phoneNumber,
+    password,
+    confirmPassword,
+    birthDate,
+    gender,
+    civilStatus,
+    validIdType,
+    validIdNumber,
+    houseNumber,
+    street,
+    barangay,
+    city,
+    province,
+    zip,
+    occupation,
+    employmentStatus,
+    monthlySalary,
+    sourceOfIncome,
+    employerName,
+    emergencyContactName,
+    emergencyContactNumber,
+    relationshipToBorrower,
+  } = req.body;
   const role = "Borrower";
 
-  if (!fullName || !email || !phoneNumber || !password || !confirmPassword) {
+  if (
+    !fullName ||
+    !email ||
+    !phoneNumber ||
+    !password ||
+    !confirmPassword ||
+    !birthDate ||
+    !gender ||
+    !civilStatus ||
+    !validIdType ||
+    !validIdNumber ||
+    !houseNumber ||
+    !street ||
+    !barangay ||
+    !city ||
+    !province ||
+    !zip ||
+    !occupation ||
+    !employmentStatus ||
+    !monthlySalary ||
+    !sourceOfIncome ||
+    !emergencyContactName ||
+    !emergencyContactNumber ||
+    !relationshipToBorrower
+  ) {
     return res.status(400).json({
       message: "All fields are required.",
     });
@@ -489,43 +538,123 @@ app.post("/client-register", (req, res) => {
     return res.status(400).json({
       message:
         "Password must be at least 8 characters and include uppercase, lowercase, and a number.",
+      });
+  }
+
+  const parsedSalary = Number(monthlySalary);
+
+  if (Number.isNaN(parsedSalary) || parsedSalary <= 0) {
+    return res.status(400).json({
+      message: "Monthly salary must be greater than 0.",
     });
   }
 
-  const checkUserSql =
-    "SELECT User_ID FROM USERS WHERE Email = ? OR Phone_Number = ? LIMIT 1";
+  let connection;
 
-  db.query(checkUserSql, [email, phoneNumber], (err, result) => {
-    if (err) {
-      console.log("Register check error:", err);
-      return res.status(500).json({
-        message: "Database error.",
-      });
-    }
+  try {
+    const [existingUsers] = await db.promise().query(
+      "SELECT User_ID FROM USERS WHERE Email = ? OR Phone_Number = ? LIMIT 1",
+      [email, phoneNumber],
+    );
 
-    if (result.length > 0) {
+    if (existingUsers.length > 0) {
       return res.status(400).json({
         message: "Account already registered. Please log in instead.",
       });
     }
 
-    const insertSql =
-      "INSERT INTO USERS (Full_Name, Email, Phone_Number, Password_Hash, Role) VALUES (?, ?, ?, ?, ?)";
+    connection = await db.promise().getConnection();
+    await connection.beginTransaction();
+
     const passwordHash = hashPassword(password);
+    const [userResult] = await connection.query(
+      "INSERT INTO USERS (Full_Name, Email, Phone_Number, Password_Hash, Role) VALUES (?, ?, ?, ?, ?)",
+      [fullName, email, phoneNumber, passwordHash, role],
+    );
 
-    db.query(insertSql, [fullName, email, phoneNumber, passwordHash, role], (err) => {
-      if (err) {
-        console.log("Register insert error:", err);
-        return res.status(500).json({
-          message: "Failed to register.",
-        });
-      }
+    const userId = userResult.insertId;
+    const [borrowerResult] = await connection.query(
+      `INSERT INTO BORROWER
+       (
+         User_ID,
+         Client_FullName,
+         Email,
+         Phone_Number,
+         Birth_Date,
+         Gender,
+         Civil_Status,
+         Valid_ID_Type,
+         Valid_ID_Number,
+         House_Number,
+         Street,
+         Barangay,
+         City,
+         Province,
+         ZIP,
+         Occupation,
+         Employment_Status,
+         Monthly_Salary,
+         Source_Of_Income,
+         Employer_Name,
+         Emergency_Contact_Name,
+         Emergency_Contact_Number,
+         Relationship_To_Borrower
+       )
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        userId,
+        fullName,
+        email,
+        phoneNumber,
+        birthDate,
+        gender,
+        civilStatus,
+        validIdType,
+        validIdNumber,
+        houseNumber,
+        street,
+        barangay,
+        city,
+        province,
+        zip,
+        occupation,
+        employmentStatus,
+        parsedSalary,
+        sourceOfIncome,
+        employerName || null,
+        emergencyContactName,
+        emergencyContactNumber,
+        relationshipToBorrower,
+      ],
+    );
 
-      return res.status(201).json({
-        message: "Account created successfully. You may now log in.",
-      });
+    await connection.commit();
+
+    return res.status(201).json({
+      message: "Account created successfully.",
+      clientId: borrowerResult.insertId,
+      user: {
+        id: userId,
+        name: fullName,
+        email,
+        phoneNumber,
+        role,
+      },
     });
-  });
+  } catch (error) {
+    if (connection) {
+      await connection.rollback();
+    }
+
+    console.log("Client register error:", error);
+    return res.status(500).json({
+      message: "Failed to register.",
+    });
+  } finally {
+    if (connection) {
+      connection.release();
+    }
+  }
 });
 
 app.post("/client-login", (req, res) => {

@@ -3,10 +3,12 @@ import { useNavigate } from "react-router-dom";
 
 export default function ClientDashboard() {
   const navigate = useNavigate();
+  const storedUser = localStorage.getItem("authUser");
+  const user = storedUser ? JSON.parse(storedUser) : null;
 
   // Change this to: null, "Pending", or "Approved"
   const loan = {
-    clientName: "Juan Dela Cruz",
+    clientName: user?.name || "Client",
     loanId: "LN-1001",
     status: "Pending", // Try: "Approved", "Pending"
     principalAmount: 50000,
