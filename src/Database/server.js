@@ -2,7 +2,7 @@ import express from "express";
 import cors from "cors";
 import crypto from "crypto";
 import { Buffer } from "buffer";
-import db from "./db.js"; 
+import db from "./db.js";
 
 const app = express();
 
@@ -96,7 +96,9 @@ const ensureBorrowerProfileColumns = async () => {
       if (!existingColumns.has(columnName)) {
         await db
           .promise()
-          .query(`ALTER TABLE BORROWER ADD COLUMN ${columnName} ${columnDefinition}`);
+          .query(
+            `ALTER TABLE BORROWER ADD COLUMN ${columnName} ${columnDefinition}`,
+          );
       }
     }
   } catch (error) {
@@ -105,7 +107,6 @@ const ensureBorrowerProfileColumns = async () => {
 };
 
 ensureBorrowerProfileColumns();
-
 
 // showing borrowers
 app.get("/api/borrowers", (req, res) => {
@@ -124,8 +125,6 @@ app.get("/api/borrowers", (req, res) => {
     res.json(results);
   });
 });
-
-
 
 app.get("/", (req, res) => {
   res.send("Server is running");
@@ -222,7 +221,9 @@ app.get("/api/client-dashboard/:clientId", async (req, res) => {
         ? Number(latestPaymentRows[0].Remaining_Balance)
         : totalLoanAmount;
     const monthlyAmortization =
-      Number(loan.Loan_Tenure) > 0 ? totalLoanAmount / Number(loan.Loan_Tenure) : 0;
+      Number(loan.Loan_Tenure) > 0
+        ? totalLoanAmount / Number(loan.Loan_Tenure)
+        : 0;
 
     const activities = [
       {
@@ -263,7 +264,9 @@ app.get("/api/client-dashboard/:clientId", async (req, res) => {
     });
   } catch (error) {
     console.error("Client dashboard error:", error);
-    return res.status(500).json({ message: "Failed to load client dashboard." });
+    return res
+      .status(500)
+      .json({ message: "Failed to load client dashboard." });
   }
 });
 
@@ -460,7 +463,6 @@ app.post("/api/borrower-info", async (req, res) => {
   }
 });
 
-
 // showing pending
 app.get("/api/pending-loans", (req, res) => {
   const sql = `
@@ -502,7 +504,7 @@ app.get("/api/pending-loans", (req, res) => {
 // for approving
 app.put("/api/loans/:id/approve", (req, res) => {
   const { id } = req.params;
-  const { officerId } = req.body; 
+  const { officerId } = req.body;
 
   if (!officerId) {
     return res.status(400).json({ error: "Officer ID is required" });
@@ -544,8 +546,6 @@ app.put("/api/loans/:id/reject", (req, res) => {
   });
 });
 
-
-
 // dashboard stats
 app.get("/api/dashboard-stats", (req, res) => {
   const sql = `
@@ -563,7 +563,7 @@ app.get("/api/dashboard-stats", (req, res) => {
        WHERE Loan_Status = 'Pending') AS pending,
 
       (SELECT COALESCE(SUM(Amortization_Amount), 0)
-       FROM PAYMENT) AS collected
+       FROM LOAN_PAYMENT) AS collected
   `;
 
   db.query(sql, (err, results) => {
@@ -704,7 +704,7 @@ app.post("/borrower-register", (req, res) => {
           message: "Borrower registered successfully.",
           clientId: result.insertId,
         });
-      }
+      },
     );
   });
 });
@@ -784,7 +784,7 @@ app.post("/client-register", async (req, res) => {
     return res.status(400).json({
       message:
         "Password must be at least 8 characters and include uppercase, lowercase, and a number.",
-      });
+    });
   }
 
   const parsedSalary = Number(monthlySalary);
@@ -798,10 +798,12 @@ app.post("/client-register", async (req, res) => {
   let connection;
 
   try {
-    const [existingBorrowers] = await db.promise().query(
-      "SELECT Client_ID FROM BORROWER WHERE Email = ? OR Phone_Number = ? LIMIT 1",
-      [email, phoneNumber],
-    );
+    const [existingBorrowers] = await db
+      .promise()
+      .query(
+        "SELECT Client_ID FROM BORROWER WHERE Email = ? OR Phone_Number = ? LIMIT 1",
+        [email, phoneNumber],
+      );
 
     if (existingBorrowers.length > 0) {
       return res.status(400).json({
@@ -945,6 +947,7 @@ app.post("/client-login", (req, res) => {
 });
 
 // admin login and register
+// admin register
 app.post("/register", (req, res) => {
   const { fullName, username, password } = req.body;
 
@@ -954,8 +957,11 @@ app.post("/register", (req, res) => {
     });
   }
 
-  const checkUserSql =
-    "SELECT * FROM LOAN_OFFICER WHERE Officer_Username = ?";
+  const checkUserSql = `
+    SELECT * 
+    FROM ADMIN_USER 
+    WHERE Username = ?
+  `;
 
   db.query(checkUserSql, [username], (err, result) => {
     if (err) {
@@ -971,8 +977,11 @@ app.post("/register", (req, res) => {
       });
     }
 
-    const insertSql =
-      "INSERT INTO LOAN_OFFICER (Officer_Name, Officer_Username, Officer_Password) VALUES (?, ?, ?)";
+    const insertSql = `
+      INSERT INTO ADMIN_USER 
+      (Admin_Name, Username, Password) 
+      VALUES (?, ?, ?)
+    `;
 
     db.query(insertSql, [fullName, username, password], (err) => {
       if (err) {
@@ -989,6 +998,7 @@ app.post("/register", (req, res) => {
   });
 });
 
+// admin login
 app.post("/login", (req, res) => {
   const { username, password } = req.body;
 
@@ -998,8 +1008,12 @@ app.post("/login", (req, res) => {
     });
   }
 
-  const sql =
-    "SELECT * FROM LOAN_OFFICER WHERE Officer_Username = ? AND Officer_Password = ?";
+  const sql = `
+    SELECT * 
+    FROM ADMIN_USER 
+    WHERE Username = ? AND Password = ?
+    LIMIT 1
+  `;
 
   db.query(sql, [username, password], (err, result) => {
     if (err) {
@@ -1013,9 +1027,10 @@ app.post("/login", (req, res) => {
       return res.status(200).json({
         message: "Login successful.",
         user: {
-          id: result[0].Officer_ID,
-          name: result[0].Officer_Name,
-          username: result[0].Officer_Username,
+          id: result[0].Admin_ID,
+          name: result[0].Admin_Name,
+          username: result[0].Username,
+          role: "admin",
         },
       });
     }
@@ -1064,7 +1079,7 @@ app.get("/api/payments", (req, res) => {
       b.Client_FullName,
       p.Amortization_Amount,
       p.Date
-    FROM PAYMENT p
+    FROM LOAN_PAYMENT p
     INNER JOIN LOAN l ON p.Loan_ID = l.Loan_ID
     INNER JOIN BORROWER b ON l.Client_ID = b.Client_ID
     ORDER BY p.Date DESC, p.Payment_ID DESC
@@ -1126,7 +1141,9 @@ app.post("/api/payments", (req, res) => {
       db.query(updateLoanSql, [newBalance, loanId], (err) => {
         if (err) {
           console.error("Failed to update balance:", err);
-          return res.status(500).json({ error: "Failed to update loan balance" });
+          return res
+            .status(500)
+            .json({ error: "Failed to update loan balance" });
         }
 
         res.json({
@@ -1150,7 +1167,7 @@ app.post("/api/loans/apply", async (req, res) => {
       province,
       zip,
       amount,
-      loanTenure,
+      loanTerm,
       loanTypeId,
       paymentFrequency,
     } = req.body;
@@ -1164,7 +1181,7 @@ app.post("/api/loans/apply", async (req, res) => {
       !province ||
       !zip ||
       !amount ||
-      !loanTenure ||
+      !loanTerm ||
       !loanTypeId ||
       !paymentFrequency
     ) {
@@ -1172,7 +1189,7 @@ app.post("/api/loans/apply", async (req, res) => {
     }
 
     const parsedAmount = Number(amount);
-    const parsedLoanTenure = Number(loanTenure);
+    const parsedLoanTerm = Number(loanTerm);
     const parsedLoanTypeId = Number(loanTypeId);
 
     if (parsedAmount <= 0 || parsedAmount > 100000) {
@@ -1203,7 +1220,7 @@ app.post("/api/loans/apply", async (req, res) => {
       WHERE Loan_Type_ID = ?
       LIMIT 1
       `,
-      [parsedLoanTypeId]
+      [parsedLoanTypeId],
     );
 
     if (loanTypeRows.length === 0) {
@@ -1220,7 +1237,7 @@ app.post("/api/loans/apply", async (req, res) => {
       WHERE Client_FullName = ? AND Phone_Number = ?
       LIMIT 1
       `,
-      [fullName, phoneNumber]
+      [fullName, phoneNumber],
     );
 
     let clientId;
@@ -1234,7 +1251,7 @@ app.post("/api/loans/apply", async (req, res) => {
         (Client_FullName, Street, Barangay, City, Province, ZIP, Phone_Number)
         VALUES (?, ?, ?, ?, ?, ?, ?)
         `,
-        [fullName, street, barangay, city, province, zip, phoneNumber]
+        [fullName, street, barangay, city, province, zip, phoneNumber],
       );
 
       clientId = borrowerResult.insertId;
@@ -1249,58 +1266,52 @@ app.post("/api/loans/apply", async (req, res) => {
       if (frequency === "Bi-Monthly") date.setDate(date.getDate() + term * 15);
       if (frequency === "Monthly") date.setMonth(date.getMonth() + term);
       if (frequency === "Quarterly") date.setMonth(date.getMonth() + term * 3);
-      if (frequency === "Semi-Annual") date.setMonth(date.getMonth() + term * 6);
+      if (frequency === "Semi-Annual")
+        date.setMonth(date.getMonth() + term * 6);
       if (frequency === "Annual") date.setFullYear(date.getFullYear() + term);
     };
 
     addTermToDate(firstDueDate, paymentFrequency, 1);
-    addTermToDate(maturityDate, paymentFrequency, parsedLoanTenure);
+    addTermToDate(maturityDate, paymentFrequency, parsedLoanTerm);
 
     const formattedToday = today.toISOString().split("T")[0];
     const formattedFirstDueDate = firstDueDate.toISOString().split("T")[0];
     const formattedMaturityDate = maturityDate.toISOString().split("T")[0];
 
-    const interestAmount = parsedAmount * (interestRate / 100) * parsedLoanTenure;
+    const interestAmount =
+      parsedAmount * (interestRate / 100) * parsedLoanTerm;
     const totalAmount = parsedAmount + interestAmount;
-    const amortization = totalAmount / parsedLoanTenure;
+    const amortization = totalAmount / parsedLoanTerm;
 
     const [loanResult] = await db.promise().query(
       `
-      INSERT INTO LOAN
-      (
-        Client_ID,
-        Loan_Type_ID,
-        Officer_ID,
-        Principal_Amount,
-        Total_Monthly_Amortization,
-        Disbursement_Date,
-        Maturity_Date,
-        Balance,
-        Interest_Amount,
-        Date_Approved,
-        Loan_Status,
-        Loan_Tenure,
-        Payment_Frequency,
-        First_Due_Date
-      )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `,
+  INSERT INTO LOAN
+  (
+    Client_ID,
+    Loan_Type_ID,
+    Principal_Amount,
+    Disbursement_Date,
+    Interest_Amount,
+    Date_Approved,
+    Payment_Start_Date,
+    Loan_Status,
+    Payment_Frequency,
+    Loan_Term
+  )
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `,
       [
-        clientId,
+        parsedClientId,
         parsedLoanTypeId,
-        1,
         parsedAmount,
-        amortization,
         formattedToday,
-        formattedMaturityDate,
-        totalAmount,
         interestAmount,
         null,
-        "Pending",
-        parsedLoanTenure,
-        paymentFrequency,
         formattedFirstDueDate,
-      ]
+        "Pending",
+        paymentFrequency,
+        parsedLoanTerm,
+      ],
     );
 
     res.status(201).json({
@@ -1411,5 +1422,3 @@ app.post("/api/loan-types", (req, res) => {
 app.listen(5000, () => {
   console.log("Server running on http://localhost:5000");
 });
-
-
