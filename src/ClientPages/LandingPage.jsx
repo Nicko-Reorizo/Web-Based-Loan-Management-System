@@ -31,16 +31,16 @@ export default function LandingPage() {
             <div className="ActionButtons flex w-full flex-col gap-4 pt-2 sm:w-auto sm:flex-row sm:gap-10">
               <button
                 className="inter-bold w-full rounded-full bg-[#ff6f61] p-3 py-4 text-[18px] text-white sm:w-[260px] md:w-[300px] md:py-6 md:text-[20px]"
-                onClick={() => navigate("/loan")}
+                onClick={() => navigate("/signup")}
               >
                 Loan Now
               </button>
 
               <button
                 className="inter-bold w-full rounded-full border-4 border-[#ff6f61] p-3 py-4 text-[18px] text-white sm:w-[260px] md:w-[300px] md:py-6 md:text-[20px]"
-                onClick={() => navigate("/details")}
+                onClick={() => navigate("/Login")}
               >
-                My Loan Details
+                Sign In
               </button>
             </div>
           </div>

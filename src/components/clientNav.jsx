@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-export default function Navbar() {
+export default function ClientNav() {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
 
@@ -11,33 +11,34 @@ export default function Navbar() {
   };
 
   return (
-    <div className="NavBar relative z-50 flex min-h-[70px] items-center justify-between bg-[#126d71] px-5 sm:px-8 lg:px-20 xl:px-30">
+    <nav className="relative z-50 flex min-h-[70px] items-center justify-between bg-[#126d71] px-5 sm:px-8 lg:px-20">
       <button
         className="inter-bold text-[20px] text-white"
-        onClick={() => goTo("/")}
+        onClick={() => goTo("/clientDashboard")}
       >
         LENDIFY
       </button>
 
-      <div className="hidden items-center space-x-10 inter-reg md:flex">
-        <button className="text-[15px] text-white" onClick={() => goTo("/")}>
-          Home
-        </button>
-        
+      <div className="hidden items-center gap-8 md:flex">
         <button
-          className="rounded-2xl bg-white px-3 py-1 text-[15px] font-bold text-[#126d71]"
+          className="inter-reg text-[15px] text-white"
+          onClick={() => goTo("/clientDashboard")}
+        >
+          Dashboard
+        </button>
+
+        <button
+          className="inter-bold rounded-2xl bg-white px-4 py-2 text-[15px] text-[#126d71]"
           onClick={() => goTo("/loan")}
         >
           Loan Now
         </button>
-        
       </div>
 
       <button
         className="flex flex-col gap-1.5 md:hidden"
         onClick={() => setOpen(!open)}
-        aria-label="Toggle menu"
-        type="button"
+        aria-label="Toggle client menu"
       >
         <span className="h-0.5 w-6 bg-white"></span>
         <span className="h-0.5 w-6 bg-white"></span>
@@ -45,20 +46,22 @@ export default function Navbar() {
       </button>
 
       {open && (
-        <div className="absolute left-0 top-[70px] flex w-full flex-col gap-4 bg-[#126d71] px-5 py-5 text-left shadow-lg md:hidden">
-          <button className="text-left text-[15px] text-white" onClick={() => goTo("/")}>
-            Home
-          </button>
-          
+        <div className="absolute left-0 top-[70px] flex w-full flex-col gap-4 bg-[#126d71] px-5 py-5 shadow-lg md:hidden">
           <button
-            className="w-fit rounded-2xl bg-white px-3 py-1 text-[15px] font-bold text-[#126d71]"
+            className="inter-reg text-left text-[15px] text-white"
+            onClick={() => goTo("/clientDashboard")}
+          >
+            Dashboard
+          </button>
+
+          <button
+            className="inter-bold w-fit rounded-2xl bg-white px-4 py-2 text-[15px] text-[#126d71]"
             onClick={() => goTo("/loan")}
           >
             Loan Now
           </button>
-        
         </div>
       )}
-    </div>
+    </nav>
   );
 }
