@@ -2,13 +2,16 @@ import { useState } from "react";
 import Navbar from "../components/navbar.jsx";
 
 export default function LoanNow() {
+  const storedBorrowerInfo = localStorage.getItem("borrowerInfo");
+  const borrowerInfo = storedBorrowerInfo ? JSON.parse(storedBorrowerInfo) : null;
   const [formData, setFormData] = useState({
-    fullName: "",
-    phoneNumber: "",
-    street: "",
-    city: "",
-    province: "",
-    zip: "",
+    fullName: borrowerInfo?.fullName || "",
+    phoneNumber: borrowerInfo?.phoneNumber || "",
+    street: borrowerInfo?.street || "",
+    barangay: borrowerInfo?.barangay || "",
+    city: borrowerInfo?.city || "",
+    province: borrowerInfo?.province || "",
+    zip: borrowerInfo?.zip || "",
     amount: "",
     loanTenure: "1",
     loanType: "",
@@ -40,6 +43,7 @@ export default function LoanNow() {
         fullName: formData.fullName.trim(),
         phoneNumber: formData.phoneNumber.trim(),
         street: formData.street.trim(),
+        barangay: formData.barangay.trim(),
         city: formData.city.trim(),
         province: formData.province.trim(),
         zip: formData.zip.trim(),
@@ -74,12 +78,13 @@ export default function LoanNow() {
       setIsError(false);
 
       setFormData({
-        fullName: "",
-        phoneNumber: "",
-        street: "",
-        city: "",
-        province: "",
-        zip: "",
+        fullName: borrowerInfo?.fullName || "",
+        phoneNumber: borrowerInfo?.phoneNumber || "",
+        street: borrowerInfo?.street || "",
+        barangay: borrowerInfo?.barangay || "",
+        city: borrowerInfo?.city || "",
+        province: borrowerInfo?.province || "",
+        zip: borrowerInfo?.zip || "",
         amount: "",
         loanTenure: "1",
         loanType: "",
@@ -141,6 +146,17 @@ export default function LoanNow() {
                 required
               />
               <label>Street</label>
+            </div>
+
+            <div className="input-group">
+              <input
+                type="text"
+                name="barangay"
+                value={formData.barangay}
+                onChange={handleChange}
+                required
+              />
+              <label>Barangay</label>
             </div>
 
             <div className="input-group">

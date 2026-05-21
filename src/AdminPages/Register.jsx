@@ -4,15 +4,21 @@ import { useState } from "react";
 export default function Register() {
   const navigate = useNavigate();
   const [fullName, setFullName] = useState("");
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [message, setMessage] = useState("");
+  const [isError, setIsError] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setMessage("");
+    setIsError(false);
 
     if (password !== confirmPassword) {
-      alert("Passwords do not match!");
+      setMessage("Password and confirm password must match.");
+      setIsError(true);
       return;
     }
 
@@ -24,24 +30,33 @@ export default function Register() {
         },
         body: JSON.stringify({
           fullName,
-          username,
+          email,
+          phoneNumber,
           password,
+          confirmPassword,
+          role: "Borrower",
         }),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        alert(data.message);
+        setMessage(data.message);
+        setIsError(true);
         return;
       }
 
-      alert("Success! User registered.");
-      alert("Please log in now.");
-      navigate("/adminLogin");
+      setMessage(data.message);
+      setIsError(false);
+      setFullName("");
+      setEmail("");
+      setPhoneNumber("");
+      setPassword("");
+      setConfirmPassword("");
     } catch (error) {
       console.log(error);
-      alert("Server error.");
+      setMessage("Server error.");
+      setIsError(true);
     }
   };
 
@@ -59,6 +74,16 @@ export default function Register() {
         <p className="inter-reg text-[#00000075] text-center mb-5">
           Sign up to get started.
         </p>
+
+        {message && (
+          <p
+            className={`rounded-lg p-3 text-center text-sm ${
+              isError ? "bg-red-50 text-red-700" : "bg-green-50 text-green-700"
+            }`}
+          >
+            {message}
+          </p>
+        )}
 
         <form onSubmit={handleSubmit}>
           <div className="flex flex-col gap-y-4 mt-5">
@@ -80,16 +105,32 @@ export default function Register() {
 
             <div className="LoginInput flex flex-col">
               <label htmlFor="" className="inter-bold opacity-65  text-sm">
-                Username
+                Email
               </label>
               <input
-                type="text"
+                type="email"
                 name=""
                 id=""
                 className="border border-[#aaaaaa3a] text-sm p-3 rounded-sm"
-                placeholder="Enter your Preferred Username."
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                placeholder="Enter your Email."
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+            </div>
+
+            <div className="LoginInput flex flex-col">
+              <label htmlFor="" className="inter-bold opacity-65  text-sm">
+                Phone Number
+              </label>
+              <input
+                type="tel"
+                name=""
+                id=""
+                className="border border-[#aaaaaa3a] text-sm p-3 rounded-sm"
+                placeholder="Enter your Phone Number."
+                value={phoneNumber}
+                onChange={(e) => setPhoneNumber(e.target.value)}
                 required
               />
             </div>
@@ -137,9 +178,9 @@ export default function Register() {
               <button
                 type="button"
                 className="underline text-blue-800"
-                onClick={() => navigate("/adminLogin")}
+                onClick={() => navigate("/login")}
               >
-                Sign in.
+                Log in
               </button>
             </div>
           </div>
