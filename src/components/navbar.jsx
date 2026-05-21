@@ -20,6 +20,8 @@ const navigate = useNavigate();
            <button className='text-white text-[15px]' onClick={()=>navigate("/")} >Home</button>
            <button className='text-white text-[15px]'  onClick={()=>navigate("/details")}>My Loan Details</button>
            <button className='bg-white px-3 rounded-2xl text-[#126d71] font-bold p-1 text-[15px]' onClick={()=>navigate("/loan")}>Loan Now</button>
+           <button className='text-white text-[15px]' onClick={()=>navigate("/login")}>Log In</button>
+           <button className='text-white text-[15px]' onClick={()=>navigate("/signup")}>Sign Up</button>
         </div>
     </div>
     )
