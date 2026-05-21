@@ -135,6 +135,138 @@ app.get("/hello", (req, res) => {
   res.send("hello route works");
 });
 
+app.get("/api/client-dashboard/:clientId", async (req, res) => {
+  const { clientId } = req.params;
+
+  if (!clientId) {
+    return res.status(400).json({ message: "Client ID is required." });
+  }
+
+  try {
+    const [borrowers] = await db.promise().query(
+      `SELECT Client_ID, Client_FullName
+       FROM BORROWER
+       WHERE Client_ID = ?
+       LIMIT 1`,
+      [clientId],
+    );
+
+    if (borrowers.length === 0) {
+      return res.status(404).json({ message: "Borrower not found." });
+    }
+
+    const [loans] = await db.promise().query(
+      `SELECT
+         l.Loan_ID,
+         l.Principal_Amount,
+         l.Interest_Amount,
+         l.Disbursement_Date,
+         l.Date_Approved,
+         l.First_Due_Date,
+         l.Loan_Status,
+         l.Loan_Tenure,
+         l.Payment_Frequency,
+         lt.Loan_Type_Name,
+         lt.Interest_Rate
+       FROM LOAN l
+       INNER JOIN LOAN_TYPE lt ON l.Loan_Type_ID = lt.Loan_Type_ID
+       WHERE l.Client_ID = ?
+       ORDER BY l.Loan_ID DESC
+       LIMIT 1`,
+      [clientId],
+    );
+
+    if (loans.length === 0) {
+      return res.json({
+        borrower: borrowers[0],
+        loan: null,
+        activities: [],
+      });
+    }
+
+    const loan = loans[0];
+
+    const [paymentSummaryRows] = await db.promise().query(
+      `SELECT
+         COALESCE(SUM(Amortization_Amount), 0) AS totalPaid,
+         COUNT(*) AS paymentCount
+       FROM LOAN_PAYMENT
+       WHERE Loan_ID = ?`,
+      [loan.Loan_ID],
+    );
+
+    const [latestPaymentRows] = await db.promise().query(
+      `SELECT Remaining_Balance
+       FROM LOAN_PAYMENT
+       WHERE Loan_ID = ?
+       ORDER BY Payment_Date DESC, Payment_ID DESC
+       LIMIT 1`,
+      [loan.Loan_ID],
+    );
+
+    const [payments] = await db.promise().query(
+      `SELECT Payment_Date, Amortization_Amount, Remaining_Balance
+       FROM LOAN_PAYMENT
+       WHERE Loan_ID = ?
+       ORDER BY Payment_Date DESC, Payment_ID DESC
+       LIMIT 5`,
+      [loan.Loan_ID],
+    );
+
+    const principalAmount = Number(loan.Principal_Amount);
+    const interestAmount = Number(loan.Interest_Amount);
+    const totalLoanAmount = principalAmount + interestAmount;
+    const totalPaid = Number(paymentSummaryRows[0].totalPaid);
+    const balance =
+      latestPaymentRows.length > 0
+        ? Number(latestPaymentRows[0].Remaining_Balance)
+        : totalLoanAmount;
+    const monthlyAmortization =
+      Number(loan.Loan_Tenure) > 0 ? totalLoanAmount / Number(loan.Loan_Tenure) : 0;
+
+    const activities = [
+      {
+        date: loan.Date_Approved || loan.Disbursement_Date || null,
+        activity:
+          loan.Loan_Status === "Approved"
+            ? "Loan Approved"
+            : "Loan Application Submitted",
+        amount: principalAmount,
+        status: loan.Loan_Status,
+      },
+      ...payments.map((payment) => ({
+        date: payment.Payment_Date,
+        activity: "Payment Recorded",
+        amount: Number(payment.Amortization_Amount),
+        status: `Balance: ${Number(payment.Remaining_Balance).toFixed(2)}`,
+      })),
+    ];
+
+    return res.json({
+      borrower: borrowers[0],
+      loan: {
+        loanId: loan.Loan_ID,
+        clientName: borrowers[0].Client_FullName,
+        status: loan.Loan_Status,
+        principalAmount,
+        balance,
+        monthlyAmortization,
+        interestRate: `${Number(loan.Interest_Rate)}%`,
+        loanType: loan.Loan_Type_Name,
+        term: `${loan.Loan_Tenure} Months`,
+        nextDueDate: loan.First_Due_Date,
+        totalPaid,
+        paymentCount: paymentSummaryRows[0].paymentCount,
+        paymentFrequency: loan.Payment_Frequency,
+      },
+      activities,
+    });
+  } catch (error) {
+    console.error("Client dashboard error:", error);
+    return res.status(500).json({ message: "Failed to load client dashboard." });
+  }
+});
+
 app.post("/api/borrower-info", async (req, res) => {
   try {
     const {

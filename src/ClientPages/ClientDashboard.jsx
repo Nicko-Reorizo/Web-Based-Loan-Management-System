@@ -1,37 +1,75 @@
 import ClientNav from "../components/clientNav.jsx";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 export default function ClientDashboard() {
   const navigate = useNavigate();
   const storedUser = localStorage.getItem("authUser");
   const user = storedUser ? JSON.parse(storedUser) : null;
+  const [dashboardData, setDashboardData] = useState({
+    borrower: null,
+    loan: null,
+    activities: [],
+  });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  // Change this to: null, "Pending", or "Approved"
-  const loan = {
-    clientName: user?.name || "Client",
-    loanId: "LN-1001",
-    status: "Pending", // Try: "Approved", "Pending"
-    principalAmount: 50000,
-    balance: 50000,
-    monthlyAmortization: 5250,
-    interestRate: "5%",
-    term: "12 Months",
-    nextDueDate: null,
-    totalPaid: 0,
-  };
+  useEffect(() => {
+    const loadDashboard = async () => {
+      if (!user?.id) {
+        setError("Please log in to view your dashboard.");
+        setLoading(false);
+        return;
+      }
 
-  // Use this to test no loan
-  // const loan = null;
+      try {
+        setLoading(true);
+        setError("");
 
+        const response = await fetch(
+          `http://localhost:5000/api/client-dashboard/${user.id}`,
+        );
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.message || "Failed to load dashboard.");
+        }
+
+        setDashboardData(data);
+      } catch (err) {
+        setError(err.message || "Failed to load dashboard.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadDashboard();
+  }, [user?.id]);
+
+  const loan = dashboardData.loan;
+  const borrowerName =
+    dashboardData.borrower?.Client_FullName || user?.name || "Client";
   const hasLoan = loan !== null;
   const isPending = loan?.status === "Pending";
   const isApproved = loan?.status === "Approved";
 
   const formatMoney = (amount) =>
-    `₱${amount.toLocaleString("en-PH", {
+    `PHP ${Number(amount || 0).toLocaleString("en-PH", {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     })}`;
+
+  const formatDate = (date) => {
+    if (!date) {
+      return "Not yet generated";
+    }
+
+    return new Date(date).toLocaleDateString("en-PH", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  };
 
   return (
     <>
@@ -42,14 +80,35 @@ export default function ClientDashboard() {
           <div className="mb-8 rounded-3xl bg-[#126d71] p-8 text-white shadow-lg">
             <p className="inter-reg text-sm opacity-80">Welcome back,</p>
             <h1 className="poppins-extrabold text-3xl md:text-5xl">
-              {loan?.clientName || "Client"}
+              {borrowerName}
             </h1>
             <p className="inter-reg mt-2 text-white/80">
               Manage your loan application and account status here.
             </p>
           </div>
 
-          {!hasLoan && (
+          {loading && (
+            <div className="rounded-3xl bg-white p-10 text-center shadow-md">
+              <p className="inter-bold text-gray-600">Loading dashboard...</p>
+            </div>
+          )}
+
+          {!loading && error && (
+            <div className="rounded-3xl bg-white p-10 text-center shadow-md">
+              <h2 className="inter-bold text-2xl text-red-600">
+                Unable to Load Dashboard
+              </h2>
+              <p className="inter-reg mt-3 text-gray-500">{error}</p>
+              <button
+                onClick={() => navigate("/login")}
+                className="inter-bold mt-8 rounded-full bg-[#ff6f61] px-10 py-4 text-white"
+              >
+                Go to Login
+              </button>
+            </div>
+          )}
+
+          {!loading && !error && !hasLoan && (
             <div className="rounded-3xl bg-white p-10 text-center shadow-md">
               <h2 className="inter-bold text-3xl text-gray-800">
                 No Loan Application Yet
@@ -68,7 +127,7 @@ export default function ClientDashboard() {
             </div>
           )}
 
-          {hasLoan && isPending && (
+          {!loading && !error && hasLoan && isPending && (
             <div className="rounded-3xl bg-white p-10 text-center shadow-md">
               <div className="mx-auto mb-5 w-fit rounded-full bg-yellow-100 px-6 py-3 text-yellow-700">
                 <p className="inter-bold">Pending Approval</p>
@@ -111,7 +170,7 @@ export default function ClientDashboard() {
             </div>
           )}
 
-          {hasLoan && isApproved && (
+          {!loading && !error && hasLoan && isApproved && (
             <>
               <div className="grid gap-5 md:grid-cols-4">
                 <InfoCard
@@ -147,7 +206,7 @@ export default function ClientDashboard() {
                     />
                     <Detail
                       label="Next Due Date"
-                      value={loan.nextDueDate || "Not yet generated"}
+                      value={formatDate(loan.nextDueDate)}
                     />
                   </div>
                 </div>
@@ -177,39 +236,59 @@ export default function ClientDashboard() {
                 </div>
               </div>
 
-              <div className="mt-8 rounded-2xl bg-white p-6 shadow-md">
-                <h2 className="inter-bold mb-5 text-2xl">
-                  Recent Loan Activity
-                </h2>
-
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left">
-                    <thead className="bg-slate-900 text-white">
-                      <tr>
-                        <th className="px-4 py-3">Date</th>
-                        <th className="px-4 py-3">Activity</th>
-                        <th className="px-4 py-3">Amount</th>
-                        <th className="px-4 py-3">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr>
-                        <td className="px-4 py-3">March 10, 2026</td>
-                        <td className="px-4 py-3">Loan Approved</td>
-                        <td className="px-4 py-3">
-                          {formatMoney(loan.principalAmount)}
-                        </td>
-                        <td className="px-4 py-3 text-blue-600">Approved</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
+              <ActivityTable
+                activities={dashboardData.activities}
+                formatDate={formatDate}
+                formatMoney={formatMoney}
+              />
             </>
           )}
         </div>
       </div>
     </>
+  );
+}
+
+function ActivityTable({ activities, formatDate, formatMoney }) {
+  return (
+    <div className="mt-8 rounded-2xl bg-white p-6 shadow-md">
+      <h2 className="inter-bold mb-5 text-2xl">Recent Loan Activity</h2>
+
+      <div className="overflow-x-auto">
+        <table className="w-full text-left">
+          <thead className="bg-slate-900 text-white">
+            <tr>
+              <th className="px-4 py-3">Date</th>
+              <th className="px-4 py-3">Activity</th>
+              <th className="px-4 py-3">Amount</th>
+              <th className="px-4 py-3">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {activities.length > 0 ? (
+              activities.map((activity, index) => (
+                <tr key={`${activity.activity}-${index}`}>
+                  <td className="px-4 py-3">{formatDate(activity.date)}</td>
+                  <td className="px-4 py-3">{activity.activity}</td>
+                  <td className="px-4 py-3">
+                    {formatMoney(activity.amount)}
+                  </td>
+                  <td className="px-4 py-3 text-blue-600">
+                    {activity.status}
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan={4} className="px-4 py-6 text-center text-gray-500">
+                  No recent activity found.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
   );
 }
 
