@@ -149,7 +149,7 @@ export default function Register() {
         relationshipToBorrower: formData.relationshipToBorrower.trim(),
       };
 
-      const response = await fetch("http://localhost:5000/client-register", {
+      const response = await fetch("http://localhost:5000/borrower-register", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -163,17 +163,14 @@ export default function Register() {
         throw new Error(data.message || "Failed to register.");
       }
 
-      localStorage.setItem("authUser", JSON.stringify(data.user));
-      localStorage.setItem("userRole", data.user.role);
-      localStorage.setItem(
-        "borrowerInfo",
-        JSON.stringify({
-          ...payload,
-          clientId: data.clientId,
-        }),
-      );
+      localStorage.removeItem("borrowerInfo");
 
-      navigate("/clientDashboard");
+      setMessage("Registration successful. Please log in.");
+      setIsError(false);
+
+      setTimeout(() => {
+        navigate("/login");
+      }, 1000);
     } catch (error) {
       setMessage(error.message || "Server error.");
       setIsError(true);
@@ -206,9 +203,8 @@ export default function Register() {
                   {index < steps.length - 1 && (
                     <div className="absolute left-1/2 top-5 h-[3px] w-full bg-white">
                       <div
-                        className={`h-full rounded-full transition ${
-                          index < currentStep ? "bg-[#126d71]" : "bg-white"
-                        }`}
+                        className={`h-full rounded-full transition ${index < currentStep ? "bg-[#126d71]" : "bg-white"
+                          }`}
                       />
                     </div>
                   )}
@@ -220,19 +216,17 @@ export default function Register() {
                         setCurrentStep(index);
                       }
                     }}
-                    className={`relative z-10 flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold shadow-sm transition ${
-                      index <= currentStep
+                    className={`relative z-10 flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold shadow-sm transition ${index <= currentStep
                         ? "bg-[#126d71] text-white"
                         : "bg-white text-slate-400"
-                    }`}
+                      }`}
                   >
                     {index + 1}
                   </button>
 
                   <span
-                    className={`mt-3 text-center text-xs font-semibold ${
-                      index === currentStep ? "text-[#126d71]" : "text-slate-500"
-                    }`}
+                    className={`mt-3 text-center text-xs font-semibold ${index === currentStep ? "text-[#126d71]" : "text-slate-500"
+                      }`}
                   >
                     {step}
                   </span>
@@ -327,9 +321,8 @@ export default function Register() {
 
           {message && (
             <p
-              className={`text-center mt-4 text-sm ${
-                isError ? "text-red-600" : "text-green-600"
-              }`}
+              className={`text-center mt-4 text-sm ${isError ? "text-red-600" : "text-green-600"
+                }`}
             >
               {message}
             </p>

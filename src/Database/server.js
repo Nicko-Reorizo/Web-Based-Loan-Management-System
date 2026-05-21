@@ -461,7 +461,138 @@ app.get("/api/dashboard-stats", (req, res) => {
   });
 });
 
+app.post("/borrower-register", (req, res) => {
+  const {
+    fullName,
+    email,
+    phoneNumber,
+    password,
+    confirmPassword,
+    birthDate,
+    gender,
+    civilStatus,
+    validIdType,
+    validIdNumber,
+    houseNumber,
+    street,
+    barangay,
+    city,
+    province,
+    zip,
+    occupation,
+    employmentStatus,
+    monthlySalary,
+    sourceOfIncome,
+    employerName,
+    emergencyContactName,
+    emergencyContactNumber,
+    relationshipToBorrower,
+  } = req.body;
 
+  if (!fullName || !email || !phoneNumber || !password || !confirmPassword) {
+    return res.status(400).json({
+      message: "Account details are required.",
+    });
+  }
+
+  if (password !== confirmPassword) {
+    return res.status(400).json({
+      message: "Password and confirm password must match.",
+    });
+  }
+
+  const checkSql = `
+    SELECT Client_ID 
+    FROM BORROWER 
+    WHERE Email = ? OR Phone_Number = ?
+    LIMIT 1
+  `;
+
+  db.query(checkSql, [email, phoneNumber], (err, result) => {
+    if (err) {
+      console.log("Borrower check error:", err);
+      return res.status(500).json({ message: "Database error." });
+    }
+
+    if (result.length > 0) {
+      return res.status(400).json({
+        message: "Borrower already registered.",
+      });
+    }
+
+    const passwordHash = hashPassword(password);
+
+    const insertSql = `
+      INSERT INTO BORROWER (
+        Client_FullName,
+        Email,
+        Phone_Number,
+        Password_Hash,
+        Birth_Date,
+        Gender,
+        Civil_Status,
+        Valid_ID_Type,
+        Valid_ID_Number,
+        House_Number,
+        Street,
+        Barangay,
+        City,
+        Province,
+        ZIP,
+        Occupation,
+        Employment_Status,
+        Monthly_Salary,
+        Source_Of_Income,
+        Employer_Name,
+        Emergency_Contact_Name,
+        Emergency_Contact_Number,
+        Relationship_To_Borrower
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `;
+
+    db.query(
+      insertSql,
+      [
+        fullName,
+        email,
+        phoneNumber,
+        passwordHash,
+        birthDate,
+        gender,
+        civilStatus,
+        validIdType,
+        validIdNumber,
+        houseNumber,
+        street,
+        barangay,
+        city,
+        province,
+        zip,
+        occupation,
+        employmentStatus,
+        monthlySalary,
+        sourceOfIncome,
+        employerName,
+        emergencyContactName,
+        emergencyContactNumber,
+        relationshipToBorrower,
+      ],
+      (err, result) => {
+        if (err) {
+          console.log("Borrower insert error:", err);
+          return res.status(500).json({
+            message: "Failed to register borrower.",
+          });
+        }
+
+        return res.status(201).json({
+          message: "Borrower registered successfully.",
+          clientId: result.insertId,
+        });
+      }
+    );
+  });
+});
 // client login and register
 app.post("/client-register", async (req, res) => {
   const {
@@ -660,48 +791,46 @@ app.post("/client-register", async (req, res) => {
 app.post("/client-login", (req, res) => {
   const { email, password } = req.body;
 
-  if (!email || !password) {
-    return res.status(400).json({
-      message: "Email and password are required.",
-    });
-  }
-
-  const sql =
-    "SELECT User_ID, Full_Name, Email, Phone_Number, Password_Hash, Role FROM USERS WHERE Email = ? LIMIT 1";
+  const sql = `
+    SELECT 
+      Client_ID,
+      Client_FullName,
+      Email,
+      Phone_Number,
+      Password_Hash
+    FROM BORROWER
+    WHERE Email = ?
+    LIMIT 1
+  `;
 
   db.query(sql, [email], (err, result) => {
     if (err) {
-      console.log("Login error:", err);
-      return res.status(500).json({
-        message: "Database error.",
-      });
+      console.log("Client login error:", err);
+      return res.status(500).json({ message: "Database error." });
     }
 
     if (result.length === 0) {
       return res.status(404).json({
-        message: "No account found. Please sign up first.",
+        message: "No borrower account found.",
       });
     }
 
-    const user = result[0];
+    const borrower = result[0];
 
-    if (!verifyPassword(password, user.Password_Hash)) {
+    if (!verifyPassword(password, borrower.Password_Hash)) {
       return res.status(401).json({
-        message: "Incorrect password. Please try again.",
+        message: "Incorrect password.",
       });
     }
-
-    const responseUser = {
-      id: user.User_ID,
-      name: user.Full_Name,
-      email: user.Email,
-      phoneNumber: user.Phone_Number,
-      role: user.Role,
-    };
 
     return res.status(200).json({
       message: "Login successful.",
-      user: responseUser,
+      user: {
+        id: borrower.Client_ID,
+        name: borrower.Client_FullName,
+        email: borrower.Email,
+        phoneNumber: borrower.Phone_Number,
+      },
     });
   });
 });
