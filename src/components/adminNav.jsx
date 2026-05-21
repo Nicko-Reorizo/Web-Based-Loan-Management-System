@@ -1,87 +1,100 @@
 import { useState } from "react";
-import { BarChart3, Users, CheckCircle, LogOut, FileText } from "lucide-react";
+import {
+  BarChart3,
+  Users,
+  CheckCircle,
+  LogOut,
+  FileText,
+  Tags,
+  Menu,
+  X,
+} from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { Tags } from "lucide-react";
 
 export default function AdminNav({ setPage }) {
   const [active, setActive] = useState("dashboard");
+  const [open, setOpen] = useState(false);
   const navigate = useNavigate();
 
+  const changePage = (name) => {
+    setActive(name);
+    setPage(name);
+    setOpen(false);
+  };
+
   const btnClass = (name) =>
-    `flex text-[17.5px] p-3 px-5 inter-bold gap-x-4 items-center rounded-[50px] transition-all
+    `flex w-full items-center gap-x-4 rounded-2xl px-4 py-3 text-left text-[15px] font-bold transition-all sm:text-[16px]
      ${
        active === name
-         ? "bg-[#126d71] text-white shadow-[0_0_12px_rgba(18,109,113,0.6)]"
-         : "text-[#0406067e] hover:bg-gray-100"
+         ? "bg-[#126d71] text-white shadow-[0_0_12px_rgba(18,109,113,0.35)] lg:bg-[#126d71] lg:text-[white]"
+         : "text-white/90 hover:bg-white/15 lg:text-[#040606a8] lg:hover:bg-gray-100"
      }`;
 
   return (
-    <div className="flex w-[15vw] h-[100vh] p-5">
-      <div className="navPages flex flex-col space-y-3 w-full h-full">
-        <p className="inter-bold text-[35px] p-5">LENDIFY</p>
-
+    <>
+      <header className="fixed left-0 top-0 z-50 flex h-[70px] w-full items-center justify-between bg-[#126d71] px-5 text-white shadow-md lg:hidden">
         <button
-          onClick={() => {
-            setActive("dashboard");
-            setPage("dashboard");
-          }}
-          className={btnClass("dashboard")}
+          className="inter-bold text-[20px]"
+          onClick={() => changePage("dashboard")}
         >
-          <BarChart3 size={20} />
-          Dashboard
+          LENDIFY
         </button>
 
-        <button
-          onClick={() => {
-            setActive("borrowers");
-            setPage("borrowers");
-          }}
-          className={btnClass("borrowers")}
-        >
-          <Users size={20} />
-          Borrowers
+        <button onClick={() => setOpen(!open)} aria-label="Toggle admin menu">
+          {open ? <X size={30} /> : <Menu size={30} />}
         </button>
+      </header>
 
-        {/* ✅ NEW LOANS NAV */}
-        <button
-          onClick={() => {
-            setActive("loans");
-            setPage("loans");
-          }}
-          className={btnClass("loans")}
-        >
-          <FileText size={20} />
-          Loans
-        </button>
+      {open && (
+        <div
+          className="fixed inset-0 z-30 bg-black/40 lg:hidden"
+          onClick={() => setOpen(false)}
+        />
+      )}
 
-        <button
-          onClick={() => {
-            setActive("approval");
-            setPage("approval");
-          }}
-          className={btnClass("approval")}
-        >
-          <CheckCircle size={20} />
-          Approval
-        </button>
-        <button
-  onClick={() => {
-    setActive("loanTypes");
-    setPage("loanTypes");
-  }}
-  className={btnClass("loanTypes")}
->
-  <Tags size={20} />
-  Loan Types
-</button>
-        <button
-          className="flex text-[17.5px] p-3 px-5 inter-bold gap-x-4 items-center rounded-[50px] transition-all text-red-500 hover:bg-red-50 mt-auto"
-          onClick={() => navigate("/adminLogin")}
-        >
-          <LogOut size={20} />
-          Log Out
-        </button>
-      </div>
-    </div>
+      <aside
+        className={`fixed left-0 top-0 z-40 flex h-screen w-[260px] flex-col bg-[#126d71] p-5 text-white shadow-xl transition-transform duration-300 lg:translate-x-0 lg:bg-white lg:text-slate-900 lg:shadow-none
+        ${open ? "translate-x-0" : "-translate-x-full"}`}
+      >
+        <p className="inter-bold mb-8 mt-[70px] px-2 text-[28px] lg:mt-0 lg:text-[32px]">
+          LENDIFY
+        </p>
+
+        <div className="flex flex-1 flex-col gap-3">
+          <button onClick={() => changePage("dashboard")} className={btnClass("dashboard")}>
+            <BarChart3 size={20} />
+            Dashboard
+          </button>
+
+          <button onClick={() => changePage("borrowers")} className={btnClass("borrowers")}>
+            <Users size={20} />
+            Borrowers
+          </button>
+
+          <button onClick={() => changePage("loans")} className={btnClass("loans")}>
+            <FileText size={20} />
+            Loans
+          </button>
+
+          <button onClick={() => changePage("approval")} className={btnClass("approval")}>
+            <CheckCircle size={20} />
+            Approval
+          </button>
+
+          <button onClick={() => changePage("loanTypes")} className={btnClass("loanTypes")}>
+            <Tags size={20} />
+            Loan Types
+          </button>
+
+          <button
+            className="mt-auto flex w-full items-center gap-x-4 rounded-2xl px-4 py-3 text-left text-[15px] font-bold text-red-100 transition-all hover:bg-red-500/20 sm:text-[16px] lg:text-red-500 lg:hover:bg-red-50"
+            onClick={() => navigate("/adminLogin")}
+          >
+            <LogOut size={20} />
+            Log Out
+          </button>
+        </div>
+      </aside>
+    </>
   );
 }

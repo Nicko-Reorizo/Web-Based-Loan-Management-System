@@ -190,7 +190,7 @@ export default function Loans() {
                               onClick={() => handlePay(loan.Loan_ID)}
                               className="rounded-lg bg-[#126d71] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#0f5b5f]"
                             >
-                              Pay
+                              DEDUCT
                             </button>
                           </div>
                         </td>

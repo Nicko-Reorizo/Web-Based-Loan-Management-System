@@ -1,13 +1,27 @@
 import { useState } from "react";
+import { UserCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 export default function ClientNav() {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+
+  const authUser = JSON.parse(localStorage.getItem("authUser"));
+
+  const profileName =
+    authUser?.name || authUser?.fullname || authUser?.username || "Client";
 
   const goTo = (path) => {
     navigate(path);
     setOpen(false);
+    setProfileOpen(false);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem("authUser");
+    localStorage.removeItem("userRole");
+    navigate("/login");
   };
 
   return (
@@ -33,6 +47,31 @@ export default function ClientNav() {
         >
           Loan Now
         </button>
+
+        <div className="relative">
+          <button
+            className="text-white"
+            onClick={() => setProfileOpen(!profileOpen)}
+            aria-label="Open user menu"
+          >
+            <UserCircle size={34} />
+          </button>
+
+          {profileOpen && (
+            <div className="absolute right-0 mt-3 w-48 rounded-xl bg-white py-3 shadow-lg">
+              <p className="inter-bold  px-4 pb-3 text-[15px] text-[#126d71]">
+                {profileName}
+              </p>
+
+              <button
+                className="inter-reg w-full rounded-2xl  px-4 py-3 text-center  text-[15px] bg-red-700 text-white hover:bg-red-800"
+                onClick={handleLogout}
+              >
+                Logout
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       <button
@@ -60,6 +99,29 @@ export default function ClientNav() {
           >
             Loan Now
           </button>
+
+          <button
+            className="flex w-fit items-center gap-2 rounded-2xl bg-white px-4 py-2 text-[#126d71]"
+            onClick={() => setProfileOpen(!profileOpen)}
+          >
+            <UserCircle size={24} />
+            <span className="inter-bold text-[15px]">Profile</span>
+          </button>
+
+          {profileOpen && (
+            <div className="w-fit rounded-xl bg-white py-3 shadow-lg">
+              <p className="inter-bold  px-4 pb-3 text-[15px] text-[#126d71]">
+                {profileName}
+              </p>
+
+              <button
+                className="inter-reg w-full px-4 py-3 text-left text-[15px] bg-red-700 text-white"
+                onClick={handleLogout}
+              >
+                Logout
+              </button>
+            </div>
+          )}
         </div>
       )}
     </nav>
