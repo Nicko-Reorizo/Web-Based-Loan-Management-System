@@ -113,7 +113,7 @@ export default function LoanTypes() {
             <tr key={type.Loan_Type_ID} className="border-b">
               <td className="p-4">{type.Loan_Type_ID}</td>
               <td className="p-4">{type.Loan_Type_Name}</td>
-              <td className="p-4">{Number(type.Interest_Rate)}%</td>
+              <td className="p-4">{(Number(type.Interest_Rate))}%</td>
             </tr>
           ))}
         </tbody>

@@ -98,7 +98,7 @@ export default function LoanDetails() {
                     <td className="px-4 py-3">{loan.Balance}</td>
                     <td className="px-4 py-3">{loan.Principal_Amount}</td>
                     <td className="px-4 py-3">
-                      {loan.Total_Monthly_Amortization}
+                      {loan.Amortization_Amount}
                     </td>
                   </tr>
                 ))}

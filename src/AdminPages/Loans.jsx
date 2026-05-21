@@ -46,8 +46,8 @@ export default function Loans() {
         String(loan.Loan_ID).toLowerCase().includes(q) ||
         String(loan.Client_FullName).toLowerCase().includes(q) ||
         String(loan.Principal_Amount).toLowerCase().includes(q) ||
-        String(loan.Total_Monthly_Amortization).toLowerCase().includes(q) ||
-        String(loan.Maturity_Date).toLowerCase().includes(q) ||
+        String(loan.Amortization_Amount).toLowerCase().includes(q) ||
+        String(loan.First_Due_Date).toLowerCase().includes(q) ||
         String(loan.Balance).toLowerCase().includes(q) ||
         String(loan.Loan_Tenure).toLowerCase().includes(q) ||
         String(loan.Interest_Amount).toLowerCase().includes(q)
@@ -164,9 +164,9 @@ export default function Loans() {
                           ₱{Number(loan.Principal_Amount).toLocaleString()}
                         </td>
                         <td className="px-6 py-4">
-                          ₱{Number(loan.Total_Monthly_Amortization).toLocaleString()}
+                          ₱{Number(loan.Amortization_Amount).toLocaleString()}
                         </td>
-                        <td className="px-6 py-4">{loan.Maturity_Date}</td>
+                        <td className="px-6 py-4">{loan.First_Due_Date}</td>
                         <td className="px-6 py-4 font-semibold text-rose-600">
                           ₱{Number(loan.Balance).toLocaleString()}
                         </td>
@@ -256,7 +256,7 @@ export default function Loans() {
                         <td className="px-6 py-4 text-emerald-600 font-semibold">
                           ₱{Number(payment.Amortization_Amount).toLocaleString()}
                         </td>
-                        <td className="px-6 py-4">{payment.Date}</td>
+                        <td className="px-6 py-4">{payment.Payment_Date}</td>
                       </tr>
                     ))
                   ) : (

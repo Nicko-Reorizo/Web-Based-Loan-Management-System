@@ -4,12 +4,10 @@ import { ArrowRight, CalendarDays, CheckCircle, ShieldCheck, WalletCards } from 
 import ClientNav from "../components/clientNav.jsx";
 
 const frequencyOptions = [
+  { value: "Daily", label: "Daily", unit: "day" },
   { value: "Weekly", label: "Weekly", unit: "week" },
-  { value: "Bi-Monthly", label: "Bi-Monthly", unit: "half-month" },
+  { value: "Semi-monthly", label: "Semi-monthly", unit: "half-month" },
   { value: "Monthly", label: "Monthly", unit: "month" },
-  { value: "Quarterly", label: "Quarterly", unit: "quarter" },
-  { value: "Semi-Annual", label: "Semi-Annual", unit: "half-year" },
-  { value: "Annual", label: "Annual", unit: "year" },
 ];
 
 export default function LoanNow() {
@@ -30,10 +28,10 @@ export default function LoanNow() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (!user?.id) {
-      navigate("/login");
-      return;
-    }
+    if (!user?.id && !user?.Client_ID) {
+  navigate("/login");
+  return;
+}
 
     fetch("http://localhost:5000/api/loan-types")
       .then((res) => res.json())
@@ -89,40 +87,46 @@ export default function LoanNow() {
     setLoading(true);
 
     try {
-      const res = await fetch("http://localhost:5000/api/loans/apply", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          clientId: user.id,
-          amount: Number(formData.amount),
-          loanTypeId: Number(formData.loanTypeId),
-          paymentFrequency: formData.paymentFrequency,
-          loanTenure: Number(formData.loanTenure),
-        }),
-      });
+  const payload = {
+    clientId: user.id || user.Client_ID,
+    amount: Number(formData.amount),
+    loanTypeId: Number(formData.loanTypeId),
+    paymentFrequency: formData.paymentFrequency,
+    loanTenure: Number(formData.loanTenure),
+  };
 
-      const data = await res.json();
+  console.log("Loan payload:", payload);
 
-      if (!res.ok) {
-        throw new Error(data.message || "Failed to submit loan.");
-      }
+  const res = await fetch("http://localhost:5000/api/loans/apply", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
 
-      setMessage(`Loan submitted successfully. Loan ID: ${data.data.loanId}`);
+  const data = await res.json();
 
-      setFormData({
-        amount: "",
-        loanTypeId: "",
-        paymentFrequency: "Monthly",
-        loanTenure: "1",
-      });
-    } catch (error) {
-      setIsError(true);
-      setMessage(error.message);
-    } finally {
-      setLoading(false);
-    }
+  console.log("Loan apply response:", data);
+
+  if (!res.ok) {
+    throw new Error(data.message || "Failed to submit loan.");
+  }
+
+  setMessage(`Loan submitted successfully. Loan ID: ${data.data.loanId}`);
+
+  setFormData({
+    amount: "",
+    loanTypeId: "",
+    paymentFrequency: "Monthly",
+    loanTenure: "1",
+  });
+} catch (error) {
+  setIsError(true);
+  setMessage(error.message);
+} finally {
+  setLoading(false);
+}
   };
 
   const inputClass =
@@ -211,7 +215,7 @@ export default function LoanNow() {
                     <option value="">Select Loan Type</option>
                     {loanTypes.map((type) => (
                       <option key={type.Loan_Type_ID} value={type.Loan_Type_ID}>
-                        {type.Loan_Type_Name} - {Number(type.Interest_Rate)}%
+                        {type.Loan_Type_Name} - {(Number(type.Interest_Rate))}%
                       </option>
                     ))}
                   </select>
@@ -302,7 +306,7 @@ export default function LoanNow() {
                 <div className="flex justify-between rounded-2xl bg-slate-50 p-4">
                   <span className="text-slate-500">Interest Rate</span>
                   <span className="font-bold text-slate-800">
-                    {selectedLoanType ? `${Number(selectedLoanType.Interest_Rate)}%` : "0%"}
+                    {selectedLoanType ? `${(Number(selectedLoanType.Interest_Rate))}%` : "0%"}
                   </span>
                 </div>
 

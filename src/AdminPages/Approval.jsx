@@ -26,12 +26,7 @@ export default function Approval() {
   }, []);
 
   const handleApprove = async (loanId) => {
-    const officerId = localStorage.getItem("officerId");
-
-    if (!officerId) {
-      alert("User not logged in");
-      return;
-    }
+   
 
     try {
       const res = await fetch(
@@ -41,9 +36,7 @@ export default function Approval() {
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({
-  officerId: Number(officerId),
-}),
+          body: JSON.stringify({}),
         },
       );
 
@@ -125,7 +118,7 @@ export default function Approval() {
                   </td>
                   <td className="px-4 py-3">{loan.Principal_Amount}</td>
                   <td className="px-4 py-3">
-                    {loan.Total_Monthly_Amortization}
+                    {loan.Amortization_Amount}
                   </td>
                   <td className="px-4 py-3">{loan.Balance}</td>
                   <td className="px-4 py-3">{loan.Loan_Tenure}</td>

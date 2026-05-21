@@ -470,18 +470,17 @@ app.get("/api/pending-loans", (req, res) => {
       l.Loan_ID,
       l.Client_ID,
       l.Loan_Type_ID,
-      l.Officer_ID,
       l.Principal_Amount,
-      l.Total_Monthly_Amortization,
-      l.Disbursement_Date,
-      l.Maturity_Date,
-      l.Balance,
       l.Interest_Amount,
+      l.Disbursement_Date,
       l.Date_Approved,
+      l.First_Due_Date,
       l.Loan_Status,
       l.Loan_Tenure,
+      l.Payment_Frequency,
       b.Client_FullName,
       b.Street,
+      b.Barangay,
       b.City,
       b.Province,
       b.ZIP,
@@ -493,10 +492,7 @@ app.get("/api/pending-loans", (req, res) => {
   `;
 
   db.query(sql, (err, results) => {
-    if (err) {
-      console.error(err);
-      return res.status(500).json({ error: "Failed to fetch pending loans" });
-    }
+    if (err) return res.status(500).json({ error: "Failed to fetch pending loans" });
     res.json(results);
   });
 });
@@ -504,26 +500,16 @@ app.get("/api/pending-loans", (req, res) => {
 // for approving
 app.put("/api/loans/:id/approve", (req, res) => {
   const { id } = req.params;
-  const { officerId } = req.body;
-
-  if (!officerId) {
-    return res.status(400).json({ error: "Officer ID is required" });
-  }
 
   const sql = `
     UPDATE LOAN
     SET Loan_Status = 'Approved',
-        Date_Approved = CURDATE(),
-        Officer_ID = ?
+        Date_Approved = CURDATE()
     WHERE Loan_ID = ?
   `;
 
-  db.query(sql, [officerId, id], (err) => {
-    if (err) {
-      console.error(err);
-      return res.status(500).json({ error: "Failed to approve loan" });
-    }
-
+  db.query(sql, [id], (err) => {
+    if (err) return res.status(500).json({ error: "Failed to approve loan" });
     res.json({ message: "Loan approved successfully" });
   });
 });
@@ -1049,12 +1035,24 @@ app.get("/api/loans", (req, res) => {
       l.Client_ID,
       b.Client_FullName,
       l.Principal_Amount,
-      l.Total_Monthly_Amortization,
-      l.Maturity_Date,
-      l.Balance,
-      l.Loan_Tenure,
       l.Interest_Amount,
-      l.Loan_Status
+      l.Disbursement_Date,
+      l.Date_Approved,
+      l.First_Due_Date,
+      l.Loan_Tenure,
+      l.Payment_Frequency,
+      l.Loan_Status,
+      COALESCE(
+        (
+          SELECT lp.Remaining_Balance
+          FROM LOAN_PAYMENT lp
+          WHERE lp.Loan_ID = l.Loan_ID
+          ORDER BY lp.Payment_Date DESC, lp.Payment_ID DESC
+          LIMIT 1
+        ),
+        l.Principal_Amount + l.Interest_Amount
+      ) AS Balance,
+      ROUND((l.Principal_Amount + l.Interest_Amount) / l.Loan_Tenure, 2) AS Amortization_Amount
     FROM LOAN l
     INNER JOIN BORROWER b ON l.Client_ID = b.Client_ID
     WHERE l.Loan_Status = 'Approved'
@@ -1062,10 +1060,7 @@ app.get("/api/loans", (req, res) => {
   `;
 
   db.query(sql, (err, results) => {
-    if (err) {
-      console.error("Failed to fetch loans:", err);
-      return res.status(500).json({ error: "Failed to fetch loans" });
-    }
+    if (err) return res.status(500).json({ error: "Failed to fetch loans" });
     res.json(results);
   });
 });
@@ -1078,18 +1073,16 @@ app.get("/api/payments", (req, res) => {
       p.Loan_ID,
       b.Client_FullName,
       p.Amortization_Amount,
-      p.Date
+      p.Payment_Date,
+      p.Remaining_Balance
     FROM LOAN_PAYMENT p
     INNER JOIN LOAN l ON p.Loan_ID = l.Loan_ID
     INNER JOIN BORROWER b ON l.Client_ID = b.Client_ID
-    ORDER BY p.Date DESC, p.Payment_ID DESC
+    ORDER BY p.Payment_Date DESC, p.Payment_ID DESC
   `;
 
   db.query(sql, (err, results) => {
-    if (err) {
-      console.error("Failed to fetch payments:", err);
-      return res.status(500).json({ error: "Failed to fetch payments" });
-    }
+    if (err) return res.status(500).json({ error: "Failed to fetch payments" });
     res.json(results);
   });
 });
@@ -1101,55 +1094,45 @@ app.post("/api/payments", (req, res) => {
     return res.status(400).json({ error: "Invalid payment data" });
   }
 
-  const getLoanSql = `
-    SELECT Balance
-    FROM LOAN
-    WHERE Loan_ID = ?
+  const getBalanceSql = `
+    SELECT
+      COALESCE(
+        (
+          SELECT lp.Remaining_Balance
+          FROM LOAN_PAYMENT lp
+          WHERE lp.Loan_ID = l.Loan_ID
+          ORDER BY lp.Payment_Date DESC, lp.Payment_ID DESC
+          LIMIT 1
+        ),
+        l.Principal_Amount + l.Interest_Amount
+      ) AS Current_Balance
+    FROM LOAN l
+    WHERE l.Loan_ID = ?
   `;
 
-  db.query(getLoanSql, [loanId], (err, loanResults) => {
-    if (err) {
-      console.error("Failed to get loan:", err);
-      return res.status(500).json({ error: "Failed to get loan" });
-    }
+  db.query(getBalanceSql, [loanId], (err, loanResults) => {
+    if (err) return res.status(500).json({ error: "Failed to get loan" });
 
     if (loanResults.length === 0) {
       return res.status(404).json({ error: "Loan not found" });
     }
 
-    const currentBalance = Number(loanResults[0].Balance);
+    const currentBalance = Number(loanResults[0].Current_Balance);
     const paymentAmount = Number(amount);
     const newBalance = Math.max(currentBalance - paymentAmount, 0);
 
     const insertPaymentSql = `
-      INSERT INTO PAYMENT (Loan_ID, Amortization_Amount, Date)
-      VALUES (?, ?, CURDATE())
+      INSERT INTO LOAN_PAYMENT
+      (Loan_ID, Amortization_Amount, Payment_Date, Remaining_Balance)
+      VALUES (?, ?, CURDATE(), ?)
     `;
 
-    db.query(insertPaymentSql, [loanId, paymentAmount], (err) => {
-      if (err) {
-        console.error("Failed to insert payment:", err);
-        return res.status(500).json({ error: "Failed to insert payment" });
-      }
+    db.query(insertPaymentSql, [loanId, paymentAmount, newBalance], (err) => {
+      if (err) return res.status(500).json({ error: "Failed to insert payment" });
 
-      const updateLoanSql = `
-        UPDATE LOAN
-        SET Balance = ?
-        WHERE Loan_ID = ?
-      `;
-
-      db.query(updateLoanSql, [newBalance, loanId], (err) => {
-        if (err) {
-          console.error("Failed to update balance:", err);
-          return res
-            .status(500)
-            .json({ error: "Failed to update loan balance" });
-        }
-
-        res.json({
-          message: "Payment recorded successfully",
-          newBalance,
-        });
+      res.json({
+        message: "Payment recorded successfully",
+        newBalance,
       });
     });
   });
@@ -1159,37 +1142,19 @@ app.post("/api/payments", (req, res) => {
 app.post("/api/loans/apply", async (req, res) => {
   try {
     const {
-      fullName,
-      phoneNumber,
-      street,
-      barangay,
-      city,
-      province,
-      zip,
-      amount,
-      loanTerm,
-      loanTypeId,
-      paymentFrequency,
-    } = req.body;
+  clientId,
+  amount,
+  loanTypeId,
+  paymentFrequency,
+  loanTenure,
+} = req.body;
 
-    if (
-      !fullName ||
-      !phoneNumber ||
-      !street ||
-      !barangay ||
-      !city ||
-      !province ||
-      !zip ||
-      !amount ||
-      !loanTerm ||
-      !loanTypeId ||
-      !paymentFrequency
-    ) {
-      return res.status(400).json({ message: "All fields are required." });
-    }
+    if (!clientId || !amount || !loanTypeId || !paymentFrequency || !loanTenure) {
+  return res.status(400).json({ message: "All fields are required." });
+}
 
     const parsedAmount = Number(amount);
-    const parsedLoanTerm = Number(loanTerm);
+    const parsedLoanTerm = Number(loanTenure);
     const parsedLoanTypeId = Number(loanTypeId);
 
     if (parsedAmount <= 0 || parsedAmount > 100000) {
@@ -1198,14 +1163,7 @@ app.post("/api/loans/apply", async (req, res) => {
       });
     }
 
-    const allowedFrequencies = [
-      "Weekly",
-      "Bi-Monthly",
-      "Monthly",
-      "Quarterly",
-      "Semi-Annual",
-      "Annual",
-    ];
+    const allowedFrequencies = ["Daily", "Weekly", "Semi-monthly", "Monthly"];
 
     if (!allowedFrequencies.includes(paymentFrequency)) {
       return res.status(400).json({
@@ -1230,61 +1188,46 @@ app.post("/api/loans/apply", async (req, res) => {
     const loanType = loanTypeRows[0];
     const interestRate = Number(loanType.Interest_Rate);
 
-    const [existingBorrowers] = await db.promise().query(
-      `
-      SELECT Client_ID
-      FROM BORROWER
-      WHERE Client_FullName = ? AND Phone_Number = ?
-      LIMIT 1
-      `,
-      [fullName, phoneNumber],
-    );
+    const parsedClientId = Number(clientId);
 
-    let clientId;
+const [borrowerRows] = await db.promise().query(
+  `
+  SELECT Client_ID
+  FROM BORROWER
+  WHERE Client_ID = ?
+  LIMIT 1
+  `,
+  [parsedClientId]
+);
 
-    if (existingBorrowers.length > 0) {
-      clientId = existingBorrowers[0].Client_ID;
-    } else {
-      const [borrowerResult] = await db.promise().query(
-        `
-        INSERT INTO BORROWER
-        (Client_FullName, Street, Barangay, City, Province, ZIP, Phone_Number)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-        `,
-        [fullName, street, barangay, city, province, zip, phoneNumber],
-      );
-
-      clientId = borrowerResult.insertId;
-    }
+if (borrowerRows.length === 0) {
+  return res.status(400).json({ message: "Borrower account not found." });
+}
 
     const today = new Date();
     const firstDueDate = new Date(today);
-    const maturityDate = new Date(today);
+    
 
     const addTermToDate = (date, frequency, term) => {
-      if (frequency === "Weekly") date.setDate(date.getDate() + term * 7);
-      if (frequency === "Bi-Monthly") date.setDate(date.getDate() + term * 15);
-      if (frequency === "Monthly") date.setMonth(date.getMonth() + term);
-      if (frequency === "Quarterly") date.setMonth(date.getMonth() + term * 3);
-      if (frequency === "Semi-Annual")
-        date.setMonth(date.getMonth() + term * 6);
-      if (frequency === "Annual") date.setFullYear(date.getFullYear() + term);
+    if (frequency === "Daily") date.setDate(date.getDate() + term);
+  if (frequency === "Weekly") date.setDate(date.getDate() + term * 7);
+  if (frequency === "Semi-monthly") date.setDate(date.getDate() + term * 15);
+  if (frequency === "Monthly") date.setMonth(date.getMonth() + term);
     };
 
     addTermToDate(firstDueDate, paymentFrequency, 1);
-    addTermToDate(maturityDate, paymentFrequency, parsedLoanTerm);
+   
 
     const formattedToday = today.toISOString().split("T")[0];
     const formattedFirstDueDate = firstDueDate.toISOString().split("T")[0];
-    const formattedMaturityDate = maturityDate.toISOString().split("T")[0];
+    
 
-    const interestAmount =
-      parsedAmount * (interestRate / 100) * parsedLoanTerm;
+    const interestAmount = parsedAmount * (interestRate / 100);
     const totalAmount = parsedAmount + interestAmount;
     const amortization = totalAmount / parsedLoanTerm;
 
-    const [loanResult] = await db.promise().query(
-      `
+   const [loanResult] = await db.promise().query(
+ `
   INSERT INTO LOAN
   (
     Client_ID,
@@ -1293,32 +1236,32 @@ app.post("/api/loans/apply", async (req, res) => {
     Disbursement_Date,
     Interest_Amount,
     Date_Approved,
-    Payment_Start_Date,
+    First_Due_Date,
     Loan_Status,
-    Payment_Frequency,
-    Loan_Term
+    Loan_Tenure,
+    Payment_Frequency
   )
   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `,
-      [
-        parsedClientId,
-        parsedLoanTypeId,
-        parsedAmount,
-        formattedToday,
-        interestAmount,
-        null,
-        formattedFirstDueDate,
-        "Pending",
-        paymentFrequency,
-        parsedLoanTerm,
-      ],
-    );
+  [
+    parsedClientId,
+    parsedLoanTypeId,
+    parsedAmount,
+    formattedToday,
+    interestAmount,
+    null,
+    formattedFirstDueDate,
+    "Pending",
+    parsedLoanTerm,
+    paymentFrequency,
+  ],
+);
 
     res.status(201).json({
       message: "Loan application submitted successfully.",
       data: {
         loanId: loanResult.insertId,
-        borrowerId: clientId,
+        borrowerId: parsedClientId,
         interestRate,
         interestAmount,
         totalAmount,
@@ -1345,9 +1288,19 @@ app.get("/api/loan-details/loan/:loanId", (req, res) => {
       b.Client_FullName,
       l.Loan_ID,
       l.Loan_Status,
-      l.Balance,
       l.Principal_Amount,
-      l.Total_Monthly_Amortization
+      l.Interest_Amount,
+      COALESCE(
+        (
+          SELECT lp.Remaining_Balance
+          FROM LOAN_PAYMENT lp
+          WHERE lp.Loan_ID = l.Loan_ID
+          ORDER BY lp.Payment_Date DESC, lp.Payment_ID DESC
+          LIMIT 1
+        ),
+        l.Principal_Amount + l.Interest_Amount
+      ) AS Balance,
+      ROUND((l.Principal_Amount + l.Interest_Amount) / l.Loan_Tenure, 2) AS Amortization_Amount
     FROM BORROWER b
     INNER JOIN LOAN l ON b.Client_ID = l.Client_ID
     WHERE l.Loan_ID = ?
