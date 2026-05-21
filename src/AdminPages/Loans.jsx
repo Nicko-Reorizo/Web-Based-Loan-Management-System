@@ -126,7 +126,7 @@ export default function Loans() {
           </div>
         </div>
 
-        <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+        <div className="overflow-hidden  border border-slate-200 bg-white shadow-sm">
           <div className="overflow-x-auto">
             <div className="max-h-[65vh] overflow-y-auto">
               <table className="min-w-full text-left">
@@ -216,7 +216,7 @@ export default function Loans() {
           </div>
         </div>
 
-        <div className="mt-8 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="mt-8  border border-slate-200 bg-white p-6 shadow-sm">
           <div className="mb-5 flex items-center gap-3">
             <div className="rounded-full bg-purple-100 p-3">
               <Wallet className="text-purple-700" size={20} />

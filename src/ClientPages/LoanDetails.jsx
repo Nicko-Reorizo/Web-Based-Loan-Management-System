@@ -73,7 +73,7 @@ export default function LoanDetails() {
         {error && <p className="mt-6 text-red-600 font-medium">{error}</p>}
 
         {loans.length > 0 && (
-          <div className="mt-8 bg-white shadow-lg rounded-2xl p-8 w-[900px] max-w-full overflow-x-auto">
+          <div className="mt-8 bg-white shadow-lg  p-8 w-[900px] max-w-full overflow-x-auto">
             <h2 className="text-2xl font-bold mb-6">Loan Details</h2>
 
             <table className="min-w-full border border-gray-200 text-left">
