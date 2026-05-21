@@ -6,6 +6,7 @@ import Navbar from "./components/navbar.jsx";
 import LandingPage from "./ClientPages/LandingPage.jsx";
 import LoanNow from "./ClientPages/LoanNow.jsx";
 import Details from "./ClientPages/LoanDetails.jsx";
+import ClientDashboard from "./ClientPages/ClientDashboard.jsx";
 
 import Login from "./AdminPages/Login.jsx";
 import Register from "./AdminPages/Register.jsx";
@@ -24,7 +25,7 @@ function App() {
           <Route path="/"  element={<LandingPage/>}/>
           <Route path="/loan" element={<LoanNow/>}/>
           <Route path="/details" element={<Details/>} />
-
+          <Route path="/clientDashboard" element={<ClientDashboard />} />
 
 
           {/* Admin Side */}

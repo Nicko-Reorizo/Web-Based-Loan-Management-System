@@ -40,7 +40,7 @@ export default function LandingPage() {
                 className="inter-bold w-full rounded-full border-4 border-[#ff6f61] p-3 py-4 text-[18px] text-white sm:w-[260px] md:w-[300px] md:py-6 md:text-[20px]"
                 onClick={() => navigate("/details")}
               >
-                My Loan Details
+                Sign Up
               </button>
             </div>
           </div>
