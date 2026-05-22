@@ -1857,6 +1857,7 @@ app.get("/api/loan-details/loan/:loanId", (req, res) => {
   });
 });
 
+// loan type crud
 app.get("/api/loan-types", (req, res) => {
   const sql = `
     SELECT Loan_Type_ID, Loan_Type_Name, Interest_Rate
@@ -1905,6 +1906,80 @@ app.post("/api/loan-types", (req, res) => {
   });
 });
 
+app.put("/api/loan-types/:id", (req, res) => {
+  const { id } = req.params;
+  const { loanTypeName, interestRate } = req.body;
+  const parsedRate = Number(interestRate);
+
+  if (!loanTypeName || Number.isNaN(parsedRate) || parsedRate <= 0) {
+    return res.status(400).json({
+      message: "Loan type name and valid interest rate are required.",
+    });
+  }
+
+  const sql = `
+    UPDATE LOAN_TYPE
+    SET Loan_Type_Name = ?,
+        Interest_Rate = ?
+    WHERE Loan_Type_ID = ?
+  `;
+
+  db.query(sql, [loanTypeName, parsedRate, id], (err, result) => {
+    if (err) {
+      if (err.code === "ER_DUP_ENTRY") {
+        return res.status(400).json({ message: "Loan type already exists." });
+      }
+
+      return res.status(500).json({ message: "Failed to update loan type." });
+    }
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: "Loan type not found." });
+    }
+
+    res.json({ message: "Loan type updated successfully." });
+  });
+});
+
+app.delete("/api/loan-types/:id", (req, res) => {
+  const { id } = req.params;
+
+  const checkSql = `
+    SELECT COUNT(*) AS total
+    FROM LOAN
+    WHERE Loan_Type_ID = ?
+  `;
+
+  db.query(checkSql, [id], (err, rows) => {
+    if (err) {
+      return res.status(500).json({ message: "Failed to check loan type." });
+    }
+
+    if (Number(rows[0].total) > 0) {
+      return res.status(400).json({
+        message: "Cannot delete this loan type because it is already used by a loan.",
+      });
+    }
+
+    const deleteSql = `
+      DELETE FROM LOAN_TYPE
+      WHERE Loan_Type_ID = ?
+    `;
+
+    db.query(deleteSql, [id], (err, result) => {
+      if (err) {
+        return res.status(500).json({ message: "Failed to delete loan type." });
+      }
+
+      if (result.affectedRows === 0) {
+        return res.status(404).json({ message: "Loan type not found." });
+      }
+
+      res.json({ message: "Loan type deleted successfully." });
+    });
+  });
+});
+//
 //business logic 50% loan
 app.get("/api/client-loans/:clientId", (req, res) => {
   const { clientId } = req.params;
