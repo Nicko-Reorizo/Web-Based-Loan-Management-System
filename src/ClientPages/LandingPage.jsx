@@ -55,7 +55,7 @@ export default function LandingPage() {
 
             <div className="MA border-b-2 border-[#ffffff69] px-10 pb-5 sm:border-b-0 sm:border-r-2 sm:pb-0">
               <p className="inter-bold text-[34px] text-[#ff6f61] sm:text-[40px]">
-                10k+
+                100+
               </p>
               <p className="inter-reg text-white">Minimum Amount</p>
             </div>
