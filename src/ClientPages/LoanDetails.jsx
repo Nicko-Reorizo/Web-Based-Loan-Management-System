@@ -1,112 +1,130 @@
-import { Search } from "lucide-react";
-import { useState } from "react";
-import Navbar from "../components/navbar.jsx";
+import { ChevronLeft } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 
 export default function LoanDetails() {
-  const [loanId, setLoanId] = useState("");
-  const [loans, setLoans] = useState([]);
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+  const { loanId } = useParams();
+  const navigate = useNavigate();
+  const [loan, setLoan] = useState(null);
 
-  const handleSearch = async () => {
-  if (!loanId.trim()) {
-    setError("Please enter a Loan ID.");
-    setLoans([]);
-    return;
-  }
+  useEffect(() => {
+    fetch(`http://localhost:5000/api/client-loan-details/${loanId}`)
+      .then((res) => res.json())
+      .then((data) => setLoan(data))
+      .catch((err) => console.error(err));
+  }, [loanId]);
 
-  try {
-    setLoading(true);
-    setError("");
-    setLoans([]);
+  const formatDate = (date) => {
+    return new Date(date).toLocaleDateString("en-PH", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+  };
 
-    const response = await fetch(
-      `http://localhost:5000/api/loan-details/loan/${loanId}`
+  if (!loan) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        Loading loan details...
+      </div>
     );
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      setError(data.message || "Failed to fetch loan details.");
-      return;
-    }
-
-    setLoans(data);
-  } catch (error) {
-    console.error("Fetch loan details error:", error);
-    setError("Server error.");
-  } finally {
-    setLoading(false);
   }
-};
+
+  const payments = loan.payments || [];
+const interestAmount = Number(loan.Interest_Amount || 0);
 
   return (
-    <>
-      <Navbar />
-      <div className="flex flex-col justify-center items-center w-full min-h-[80vh] px-4">
-        <p className="inter-bold mt-10 text-[50px]">Check My Loan</p>
+    <div className="min-h-screen bg-white">
+      <div className="sticky top-0 z-20 flex h-[70px] items-center justify-center bg-white shadow-sm">
+        <button
+          onClick={() => navigate(-1)}
+          className="absolute left-5 text-red-500"
+        >
+          <ChevronLeft size={34} />
+        </button>
 
-        <div className="flex items-center bg-gray-200 rounded-full p-3 w-[700px] shadow-md mt-6 max-w-full">
-          <div className="flex items-center flex-1 px-4 gap-2">
-            <Search size={25} className="text-gray-500" />
-            <input
-              type="text"
-              placeholder="Enter Loan ID"
-              className="bg-transparent outline-none w-full text-lg"
-              value={loanId}
-              onChange={(e) => setLoanId(e.target.value)}
-            />
-          </div>
+        <h1 className="text-[24px] font-semibold text-[#222]">
+          Loan Details
+        </h1>
+      </div>
 
-          <button
-            onClick={handleSearch}
-            className="bg-[#ff6f61] text-white px-8 py-4 rounded-full font-semibold text-lg"
-          >
-            Search
-          </button>
+      <section className="flex flex-col items-center justify-center px-5 py-12">
+        <h2 className="text-[52px] font-bold text-[#222]">
+          ₱{Number(loan.Principal_Amount).toLocaleString()}
+        </h2>
+        <p className="mt-2 text-[20px] text-gray-500">Total loan amount</p>
+      </section>
+
+      <div className="bg-[#f4f4f4] px-5 py-4 text-[20px] text-gray-600">
+        Loan Details
+      </div>
+
+      <section className="space-y-5 px-5 py-6 text-[18px] text-gray-500">
+        <div className="flex justify-between gap-5">
+          <span>Start Date</span>
+          <span>{formatDate(loan.First_Due_Date)}</span>
         </div>
 
-        {loading && (
-          <p className="mt-6 text-gray-600">Loading loan details...</p>
-        )}
+        <div className="flex justify-between gap-5">
+          <span>Loan Tenure</span>
+          <span>{loan.Loan_Tenure} {loan.Payment_Frequency}</span>
+        </div>
 
-        {error && <p className="mt-6 text-red-600 font-medium">{error}</p>}
+        
 
-        {loans.length > 0 && (
-          <div className="mt-8 bg-white shadow-lg  p-8 w-[900px] max-w-full overflow-x-auto">
-            <h2 className="text-2xl font-bold mb-6">Loan Details</h2>
+        <div className="flex justify-between gap-5">
+          <span>Interest Amount Per Due</span>
+          <span>₱{interestAmount.toFixed(2)}</span>
+        </div>
 
-            <table className="min-w-full border border-gray-200 text-left">
-              <thead className="bg-slate-900 text-white">
-                <tr>
-                  <th className="px-4 py-3">Client ID</th>
-                  <th className="px-4 py-3">Borrower Name</th>
-                  <th className="px-4 py-3">Loan ID</th>
-                  <th className="px-4 py-3">Loan Status</th>
-                  <th className="px-4 py-3">Balance</th>
-                  <th className="px-4 py-3">Principal Amount</th>
-                  <th className="px-4 py-3">Monthly Amortization</th>
-                </tr>
-              </thead>
-              <tbody>
-                {loans.map((loan) => (
-                  <tr key={loan.Loan_ID} className="border-t hover:bg-gray-50">
-                    <td className="px-4 py-3">{loan.Client_ID}</td>
-                    <td className="px-4 py-3">{loan.Client_FullName}</td>
-                    <td className="px-4 py-3">{loan.Loan_ID}</td>
-                    <td className="px-4 py-3">{loan.Loan_Status}</td>
-                    <td className="px-4 py-3">{loan.Balance}</td>
-                    <td className="px-4 py-3">{loan.Principal_Amount}</td>
-                    <td className="px-4 py-3">
-                      {loan.Amortization_Amount}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+        <div className="flex justify-between gap-5">
+          <span>Interest Rate Per Due</span>
+          <span>{Number(loan.Interest_Rate || 0).toFixed(2)}%</span>
+        </div>
+
+        
+
+        
+
+        <div className="flex justify-between gap-5">
+          <span>Loan ID</span>
+          <span className="text-right">{loan.Loan_ID}</span>
+        </div>
+      </section>
+
+      <div className="bg-[#f4f4f4] px-5 py-4 text-[20px] text-gray-600">
+        Monthly Repayment Details
       </div>
-    </>
+
+      <section className="px-5">
+        {payments.map((payment, index) => (
+          <div
+            key={payment.Payment_ID}
+            className="flex items-center justify-between border-b border-gray-100 py-5"
+          >
+            <div>
+              <h3 className="text-[20px] font-semibold text-[#222]">
+                {index + 1}/{payments.length}, ₱
+                {Number(payment.Amortization_Amount).toFixed(2)}
+              </h3>
+
+              <p className="mt-1 text-[16px] text-gray-500">
+                Due Date: {formatDate(payment.Payment_Date)}
+              </p>
+            </div>
+
+            <p
+              className={`text-[18px] ${
+                String(payment.Payment_Date ? "Paid" : "Unpaid").toLowerCase() === "paid"
+                  ? "text-green-600"
+                  : "text-gray-500"
+              }`}
+            >
+              {payment.Payment_Status}
+            </p>
+          </div>
+        ))}
+      </section>
+    </div>
   );
 }

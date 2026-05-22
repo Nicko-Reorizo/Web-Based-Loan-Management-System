@@ -1,6 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, CalendarDays, CheckCircle, ShieldCheck, WalletCards } from "lucide-react";
+import {
+  ArrowRight,
+  CalendarDays,
+  CheckCircle,
+  ShieldCheck,
+  WalletCards,
+} from "lucide-react";
 import ClientNav from "../components/clientNav.jsx";
 
 const frequencyOptions = [
@@ -16,6 +22,8 @@ export default function LoanNow() {
   const user = storedUser ? JSON.parse(storedUser) : null;
 
   const [loanTypes, setLoanTypes] = useState([]);
+  const [eligibility, setEligibility] = useState(null);
+
   const [formData, setFormData] = useState({
     amount: "",
     loanTypeId: "",
@@ -27,17 +35,35 @@ export default function LoanNow() {
   const [isError, setIsError] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  const clientId = user?.id || user?.Client_ID;
+
   useEffect(() => {
-    if (!user?.id && !user?.Client_ID) {
-  navigate("/login");
-  return;
-}
+    if (!clientId) {
+      navigate("/login");
+      return;
+    }
 
     fetch("http://localhost:5000/api/loan-types")
       .then((res) => res.json())
       .then((data) => setLoanTypes(Array.isArray(data) ? data : []))
       .catch(() => setLoanTypes([]));
-  }, [user?.id, navigate]);
+
+    fetch(`http://localhost:5000/api/client-loan-eligibility/${clientId}`)
+      .then((res) => res.json())
+      .then((data) => {
+        setEligibility(data);
+
+        if (data.isReloan) {
+          setFormData((prev) => ({
+            ...prev,
+            loanTypeId: data.loanTypeId || "",
+            paymentFrequency: data.paymentFrequency || "Monthly",
+            loanTenure: data.loanTenure || "1",
+          }));
+        }
+      })
+      .catch(() => setEligibility(null));
+  }, [clientId, navigate]);
 
   const selectedLoanType = useMemo(() => {
     return loanTypes.find(
@@ -48,6 +74,12 @@ export default function LoanNow() {
   const selectedFrequency = frequencyOptions.find(
     (item) => item.value === formData.paymentFrequency
   );
+
+  const peso = (value) =>
+    Number(value || 0).toLocaleString("en-PH", {
+      style: "currency",
+      currency: "PHP",
+    });
 
   const preview = useMemo(() => {
     const amount = Number(formData.amount);
@@ -63,16 +95,14 @@ export default function LoanNow() {
     return { interest, total, payment };
   }, [formData.amount, formData.loanTenure, selectedLoanType]);
 
-  const peso = (value) =>
-    Number(value || 0).toLocaleString("en-PH", {
-      style: "currency",
-      currency: "PHP",
-    });
+  const maxAmount = eligibility?.isReloan
+    ? Number(eligibility.maxReloanAmount || 0)
+    : 100000;
 
   const handleChange = (e) => {
     const { name, value } = e.target;
 
-    if (name === "amount" && Number(value) > 100000) return;
+    if (name === "amount" && Number(value) > maxAmount) return;
 
     setFormData((prev) => ({
       ...prev,
@@ -87,50 +117,57 @@ export default function LoanNow() {
     setLoading(true);
 
     try {
-  const payload = {
-    clientId: user.id || user.Client_ID,
-    amount: Number(formData.amount),
-    loanTypeId: Number(formData.loanTypeId),
-    paymentFrequency: formData.paymentFrequency,
-    loanTenure: Number(formData.loanTenure),
-  };
+      const payload = eligibility?.isReloan
+        ? {
+            clientId,
+            amount: Number(formData.amount),
+          }
+        : {
+            clientId,
+            amount: Number(formData.amount),
+            loanTypeId: Number(formData.loanTypeId),
+            paymentFrequency: formData.paymentFrequency,
+            loanTenure: Number(formData.loanTenure),
+          };
 
-  console.log("Loan payload:", payload);
+      const url = eligibility?.isReloan
+        ? "http://localhost:5000/api/loans/reloan"
+        : "http://localhost:5000/api/loans/apply";
 
-  const res = await fetch("http://localhost:5000/api/loans/apply", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(payload),
-  });
+      const res = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
 
-  const data = await res.json();
+      const data = await res.json();
 
-  console.log("Loan apply response:", data);
+      if (!res.ok) {
+        throw new Error(data.message || "Failed to submit request.");
+      }
 
-  if (!res.ok) {
-    throw new Error(data.message || "Failed to submit loan.");
-  }
+      setMessage(
+        eligibility?.isReloan
+          ? "Reloan request submitted successfully."
+          : `Loan submitted successfully. Loan ID: ${data.data.loanId}`
+      );
 
-  setMessage(`Loan submitted successfully. Loan ID: ${data.data.loanId}`);
-
-  setFormData({
-    amount: "",
-    loanTypeId: "",
-    paymentFrequency: "Monthly",
-    loanTenure: "1",
-  });
-} catch (error) {
-  setIsError(true);
-  setMessage(error.message);
-} finally {
-  setLoading(false);
-}
+      setFormData((prev) => ({
+        ...prev,
+        amount: "",
+      }));
+    } catch (error) {
+      setIsError(true);
+      setMessage(error.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const inputClass =
-    "w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-[#00b386] focus:ring-4 focus:ring-[#00b386]/10";
+    "w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-[#00b386] focus:ring-4 focus:ring-[#00b386]/10 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500";
 
   const labelClass = "mb-2 block text-sm font-semibold text-slate-700";
 
@@ -140,7 +177,7 @@ export default function LoanNow() {
 
       <div className="min-h-screen bg-gradient-to-br from-[#e9fff7] via-white to-[#edf7ff] px-4 py-10">
         <div className="mx-auto max-w-6xl">
-          <div className="mb-8 rounded-[32px] bg-gradient-to-br bg-[#126d71]  p-8 text-white shadow-2xl">
+          <div className="mb-8 rounded-[32px] bg-[#126d71] p-8 text-white shadow-2xl">
             <div className="mb-8 flex items-center gap-3">
               <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/20">
                 <WalletCards size={26} />
@@ -148,16 +185,22 @@ export default function LoanNow() {
 
               <div>
                 <p className="text-sm text-white/80">Welcome, {user?.name}</p>
-                <h1 className="text-3xl font-black">Apply for a Loan!</h1>
+                <h1 className="text-3xl font-black">
+                  {eligibility?.isReloan ? "Apply for Reloan" : "Apply for a Loan"}
+                </h1>
               </div>
             </div>
 
             <h2 className="mb-4 max-w-2xl text-4xl font-black leading-tight md:text-5xl">
-              Get funds up to ₱100,000
+              {eligibility?.isReloan
+                ? `Reloan up to ${peso(eligibility.maxReloanAmount)}`
+                : "Get funds up to ₱100,000"}
             </h2>
 
             <p className="mb-8 max-w-xl text-white/90">
-              Choose your loan type, payment schedule, and term. Review the estimate before sending.
+              {eligibility?.isReloan
+                ? "Your loan type, payment frequency, and tenure will stay the same."
+                : "Choose your loan type, payment schedule, and term. Review the estimate before sending."}
             </p>
 
             <div className="grid gap-4 sm:grid-cols-3">
@@ -169,8 +212,12 @@ export default function LoanNow() {
 
               <div className="rounded-3xl bg-white/15 p-5 backdrop-blur">
                 <CalendarDays className="mb-3" />
-                <p className="font-bold">Flexible Terms</p>
-                <p className="text-sm text-white/80">Weekly to yearly</p>
+                <p className="font-bold">Fixed Terms</p>
+                <p className="text-sm text-white/80">
+                  {eligibility?.isReloan
+                    ? "Same loan settings"
+                    : "Daily to monthly"}
+                </p>
               </div>
 
               <div className="rounded-3xl bg-white/15 p-5 backdrop-blur">
@@ -182,10 +229,19 @@ export default function LoanNow() {
           </div>
 
           <div className="grid gap-8 lg:grid-cols-[1fr_420px]">
-            <form onSubmit={handleSubmit} className="rounded-[32px] bg-white p-6 shadow-2xl md:p-8">
+            <form
+              onSubmit={handleSubmit}
+              className="rounded-[32px] bg-white p-6 shadow-2xl md:p-8"
+            >
               <h2 className="mb-6 text-2xl font-black text-slate-900">
-                Loan Details
+                {eligibility?.isReloan ? "Reloan Details" : "Loan Details"}
               </h2>
+
+              {eligibility && !eligibility.canLoan && (
+                <div className="mb-5 rounded-2xl bg-red-50 p-4 font-semibold text-red-600">
+                  {eligibility.reason}
+                </div>
+              )}
 
               <div className="grid gap-5 md:grid-cols-2">
                 <div>
@@ -196,11 +252,21 @@ export default function LoanNow() {
                     value={formData.amount}
                     onChange={handleChange}
                     min="1"
-                    max="100000"
+                    max={maxAmount}
                     required
                     className={inputClass}
-                    placeholder="Maximum ₱100,000"
+                    placeholder={
+                      eligibility?.isReloan
+                        ? `Maximum ${peso(eligibility.maxReloanAmount)}`
+                        : "Maximum ₱100,000"
+                    }
                   />
+
+                  {eligibility?.isReloan && (
+                    <p className="mt-2 text-sm font-semibold text-[#126d71]">
+                      Maximum reloan amount: {peso(eligibility.maxReloanAmount)}
+                    </p>
+                  )}
                 </div>
 
                 <div>
@@ -210,12 +276,13 @@ export default function LoanNow() {
                     value={formData.loanTypeId}
                     onChange={handleChange}
                     required
+                    disabled={eligibility?.isReloan}
                     className={inputClass}
                   >
                     <option value="">Select Loan Type</option>
                     {loanTypes.map((type) => (
                       <option key={type.Loan_Type_ID} value={type.Loan_Type_ID}>
-                        {type.Loan_Type_Name} - {(Number(type.Interest_Rate))}%
+                        {type.Loan_Type_Name} - {Number(type.Interest_Rate)}%
                       </option>
                     ))}
                   </select>
@@ -228,6 +295,7 @@ export default function LoanNow() {
                     value={formData.paymentFrequency}
                     onChange={handleChange}
                     required
+                    disabled={eligibility?.isReloan}
                     className={inputClass}
                   >
                     {frequencyOptions.map((frequency) => (
@@ -250,6 +318,7 @@ export default function LoanNow() {
                     min="1"
                     max="120"
                     required
+                    disabled={eligibility?.isReloan}
                     className={inputClass}
                     placeholder="Example: 6"
                   />
@@ -258,17 +327,23 @@ export default function LoanNow() {
 
               <button
                 type="submit"
-                disabled={loading}
-                className="mt-8 flex w-full items-center justify-center gap-2 rounded-2xl  bg-[#ff6f61]  px-6 py-4 text-lg font-black text-white shadow-lg transition hover:scale-[1.01] disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={loading || (eligibility && !eligibility.canLoan)}
+                className="mt-8 flex w-full items-center justify-center gap-2 rounded-2xl bg-[#ff6f61] px-6 py-4 text-lg font-black text-white shadow-lg transition hover:scale-[1.01] disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {loading ? "Submitting..." : "Submit Loan Application"}
+                {loading
+                  ? "Submitting..."
+                  : eligibility?.isReloan
+                    ? "Submit Reloan Request"
+                    : "Submit Loan Application"}
                 {!loading && <ArrowRight size={20} />}
               </button>
 
               {message && (
                 <p
                   className={`mt-5 rounded-2xl p-4 text-center font-semibold ${
-                    isError ? "bg-red-50 text-red-600" : "bg-green-50 text-green-700"
+                    isError
+                      ? "bg-red-50 text-red-600"
+                      : "bg-green-50 text-green-700"
                   }`}
                 >
                   {message}
@@ -278,7 +353,7 @@ export default function LoanNow() {
 
             <div className="rounded-[32px] bg-white p-6 shadow-2xl">
               <p className="mb-2 text-sm font-bold text-[#00b386]">
-                Loan Summary
+                {eligibility?.isReloan ? "Reloan Summary" : "Loan Summary"}
               </p>
 
               <h3 className="mb-6 text-2xl font-black text-slate-900">
@@ -286,12 +361,14 @@ export default function LoanNow() {
               </h3>
 
               <div className="mb-5 rounded-3xl bg-slate-50 p-5">
-                <p className="text-sm text-slate-500">Loan Amount</p>
+                <p className="text-sm text-slate-500">
+                  {eligibility?.isReloan ? "Reloan Amount" : "Loan Amount"}
+                </p>
                 <p className="text-4xl font-black text-slate-900">
                   {peso(formData.amount)}
                 </p>
                 <p className="mt-2 text-xs text-slate-500">
-                  Maximum amount: ₱100,000
+                  Maximum amount: {peso(maxAmount)}
                 </p>
               </div>
 
@@ -306,7 +383,9 @@ export default function LoanNow() {
                 <div className="flex justify-between rounded-2xl bg-slate-50 p-4">
                   <span className="text-slate-500">Interest Rate</span>
                   <span className="font-bold text-slate-800">
-                    {selectedLoanType ? `${(Number(selectedLoanType.Interest_Rate))}%` : "0%"}
+                    {selectedLoanType
+                      ? `${Number(selectedLoanType.Interest_Rate)}%`
+                      : "0%"}
                   </span>
                 </div>
 

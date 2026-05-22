@@ -10,6 +10,8 @@ import BorrowerInfo from "./ClientPages/BorrowerInfo.jsx";
 import ClientLogin from "./ClientPages/Login.jsx";
 import ClientRegister from "./ClientPages/Register.jsx";
 import ClientDashboard from "./ClientPages/ClientDashboard.jsx";
+import OutstandingLoans from "./ClientPages/OutstandingLoans";
+import LoanDetails from "./ClientPages/LoanDetails";
 
 import AdminLogin from "./AdminPages/Login.jsx";
 import AdminRegister from "./AdminPages/Register.jsx";
@@ -35,6 +37,8 @@ function App() {
           <Route path="/loan" element={<LoanNow />} />
 
           {/* Admin Side */}
+          <Route path="/outstandingLoans" element={<OutstandingLoans />} />
+          <Route path="/loanDetails/:loanId" element={<LoanDetails />} />
           <Route path="/adminLogin" element={<AdminLogin/>}/>
           <Route path="/adminRegister" element={<AdminRegister/>}/>
           <Route path="/adminMainPage" element={<MainPage/>}/>

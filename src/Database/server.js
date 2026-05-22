@@ -126,6 +126,363 @@ app.get("/api/borrowers", (req, res) => {
   });
 });
 
+//SHOWING DETAILS OF BORROWERS AND EDIT DELETE
+app.get("/api/borrowers/:id", async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const [rows] = await db.promise().query(
+      `
+      SELECT
+        Client_ID,
+        Client_FullName,
+        Email,
+        Phone_Number,
+        Birth_Date,
+        Gender,
+        Civil_Status,
+        Valid_ID_Type,
+        Valid_ID_Number,
+        House_Number,
+        Street,
+        Barangay,
+        City,
+        Province,
+        ZIP,
+        Occupation,
+        Employment_Status,
+        Monthly_Salary,
+        Source_Of_Income,
+        Employer_Name,
+        Emergency_Contact_Name,
+        Emergency_Contact_Number,
+        Relationship_To_Borrower,
+        Created_At
+      FROM BORROWER
+      WHERE Client_ID = ?
+      LIMIT 1
+      `,
+      [id]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({ message: "Borrower not found." });
+    }
+
+    res.json(rows[0]);
+  } catch (error) {
+    console.log("Get borrower error:", error);
+    res.status(500).json({ message: "Failed to get borrower info." });
+  }
+});
+
+app.put("/api/borrowers/:id", async (req, res) => {
+  const { id } = req.params;
+
+  const {
+    Client_FullName,
+    Email,
+    Phone_Number,
+    Birth_Date,
+    Gender,
+    Civil_Status,
+    Valid_ID_Type,
+    Valid_ID_Number,
+    House_Number,
+    Street,
+    Barangay,
+    City,
+    Province,
+    ZIP,
+    Occupation,
+    Employment_Status,
+    Monthly_Salary,
+    Source_Of_Income,
+    Employer_Name,
+    Emergency_Contact_Name,
+    Emergency_Contact_Number,
+    Relationship_To_Borrower,
+  } = req.body;
+
+  if (
+    !Client_FullName ||
+    !Email ||
+    !Phone_Number ||
+    !Street ||
+    !City ||
+    !Province ||
+    !ZIP
+  ) {
+    return res.status(400).json({
+      message: "Name, email, phone, street, city, province, and ZIP are required.",
+    });
+  }
+
+  try {
+    await db.promise().query(
+      `
+      UPDATE BORROWER
+      SET
+        Client_FullName = ?,
+        Email = ?,
+        Phone_Number = ?,
+        Birth_Date = ?,
+        Gender = ?,
+        Civil_Status = ?,
+        Valid_ID_Type = ?,
+        Valid_ID_Number = ?,
+        House_Number = ?,
+        Street = ?,
+        Barangay = ?,
+        City = ?,
+        Province = ?,
+        ZIP = ?,
+        Occupation = ?,
+        Employment_Status = ?,
+        Monthly_Salary = ?,
+        Source_Of_Income = ?,
+        Employer_Name = ?,
+        Emergency_Contact_Name = ?,
+        Emergency_Contact_Number = ?,
+        Relationship_To_Borrower = ?
+      WHERE Client_ID = ?
+      `,
+      [
+        Client_FullName,
+        Email,
+        Phone_Number,
+        Birth_Date || null,
+        Gender || null,
+        Civil_Status || null,
+        Valid_ID_Type || null,
+        Valid_ID_Number || null,
+        House_Number || null,
+        Street,
+        Barangay || null,
+        City,
+        Province,
+        ZIP,
+        Occupation || null,
+        Employment_Status || null,
+        Monthly_Salary || null,
+        Source_Of_Income || null,
+        Employer_Name || null,
+        Emergency_Contact_Name || null,
+        Emergency_Contact_Number || null,
+        Relationship_To_Borrower || null,
+        id,
+      ]
+    );
+
+    res.json({ message: "Borrower updated successfully." });
+  } catch (error) {
+    console.log("Update borrower error:", error);
+
+    if (error.code === "ER_DUP_ENTRY") {
+      return res.status(400).json({
+        message: "Email or phone number already exists.",
+      });
+    }
+
+    res.status(500).json({ message: "Failed to update borrower." });
+  }
+});
+//add borrower
+app.post("/api/admin/borrowers", async (req, res) => {
+  try {
+    const {
+      Client_FullName,
+      Email,
+      Phone_Number,
+      Password,
+      ConfirmPassword,
+      Birth_Date,
+      Gender,
+      Civil_Status,
+      Valid_ID_Type,
+      Valid_ID_Number,
+      House_Number,
+      Street,
+      Barangay,
+      City,
+      Province,
+      ZIP,
+      Occupation,
+      Employment_Status,
+      Monthly_Salary,
+      Source_Of_Income,
+      Employer_Name,
+      Emergency_Contact_Name,
+      Emergency_Contact_Number,
+      Relationship_To_Borrower,
+    } = req.body;
+
+    if (
+      !Client_FullName ||
+      !Email ||
+      !Phone_Number ||
+      !Password ||
+      !ConfirmPassword ||
+      !Birth_Date ||
+      !Gender ||
+      !Civil_Status ||
+      !Valid_ID_Type ||
+      !Valid_ID_Number ||
+      !House_Number ||
+      !Street ||
+      !Barangay ||
+      !City ||
+      !Province ||
+      !ZIP ||
+      !Occupation ||
+      !Employment_Status ||
+      !Monthly_Salary ||
+      !Source_Of_Income ||
+      !Emergency_Contact_Name ||
+      !Emergency_Contact_Number ||
+      !Relationship_To_Borrower
+    ) {
+      return res.status(400).json({ message: "All fields are required." });
+    }
+
+    if (Password !== ConfirmPassword) {
+      return res.status(400).json({ message: "Passwords do not match." });
+    }
+
+    const passwordHash = hashPassword(Password);
+
+    const [result] = await db.promise().query(
+      `
+      INSERT INTO BORROWER (
+        Client_FullName,
+        Email,
+        Phone_Number,
+        Password_Hash,
+        Birth_Date,
+        Gender,
+        Civil_Status,
+        Valid_ID_Type,
+        Valid_ID_Number,
+        House_Number,
+        Street,
+        Barangay,
+        City,
+        Province,
+        ZIP,
+        Occupation,
+        Employment_Status,
+        Monthly_Salary,
+        Source_Of_Income,
+        Employer_Name,
+        Emergency_Contact_Name,
+        Emergency_Contact_Number,
+        Relationship_To_Borrower
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `,
+      [
+        Client_FullName,
+        Email,
+        Phone_Number,
+        passwordHash,
+        Birth_Date,
+        Gender,
+        Civil_Status,
+        Valid_ID_Type,
+        Valid_ID_Number,
+        House_Number,
+        Street,
+        Barangay,
+        City,
+        Province,
+        ZIP,
+        Occupation,
+        Employment_Status,
+        Monthly_Salary,
+        Source_Of_Income,
+        Employer_Name || null,
+        Emergency_Contact_Name,
+        Emergency_Contact_Number,
+        Relationship_To_Borrower,
+      ]
+    );
+
+    res.status(201).json({
+      message: "Borrower added successfully.",
+      clientId: result.insertId,
+    });
+  } catch (error) {
+    console.log("Admin add borrower error:", error);
+
+    res.status(500).json({
+      message: "Failed to add borrower.",
+    });
+  }
+});
+//delete borrower
+app.delete("/api/borrowers/:id", async (req, res) => {
+  const { id } = req.params;
+  let connection;
+
+  try {
+    connection = await db.promise().getConnection();
+    await connection.beginTransaction();
+
+    const [loans] = await connection.query(
+      `
+      SELECT Loan_ID
+      FROM LOAN
+      WHERE Client_ID = ?
+      `,
+      [id]
+    );
+
+    const loanIds = loans.map((loan) => loan.Loan_ID);
+
+    if (loanIds.length > 0) {
+      await connection.query(
+        `
+        DELETE FROM LOAN_PAYMENT
+        WHERE Loan_ID IN (?)
+        `,
+        [loanIds]
+      );
+
+      await connection.query(
+        `
+        DELETE FROM LOAN
+        WHERE Client_ID = ?
+        `,
+        [id]
+      );
+    }
+
+    const [deleteResult] = await connection.query(
+      `
+      DELETE FROM BORROWER
+      WHERE Client_ID = ?
+      `,
+      [id]
+    );
+
+    if (deleteResult.affectedRows === 0) {
+      await connection.rollback();
+      return res.status(404).json({ message: "Borrower not found." });
+    }
+
+    await connection.commit();
+
+    res.json({ message: "Borrower deleted successfully." });
+  } catch (error) {
+    if (connection) await connection.rollback();
+
+    console.log("Delete borrower error:", error);
+    res.status(500).json({ message: "Failed to delete borrower." });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
 app.get("/", (req, res) => {
   res.send("Server is running");
 });
@@ -254,7 +611,7 @@ app.get("/api/client-dashboard/:clientId", async (req, res) => {
         monthlyAmortization,
         interestRate: `${Number(loan.Interest_Rate)}%`,
         loanType: loan.Loan_Type_Name,
-        term: `${loan.Loan_Tenure} Months`,
+        term: `${loan.Loan_Tenure} ${loan.Payment_Frequency}`,
         nextDueDate: loan.First_Due_Date,
         totalPaid,
         paymentCount: paymentSummaryRows[0].paymentCount,
@@ -1142,20 +1499,21 @@ app.post("/api/payments", (req, res) => {
 app.post("/api/loans/apply", async (req, res) => {
   try {
     const {
-  clientId,
-  amount,
-  loanTypeId,
-  paymentFrequency,
-  loanTenure,
-} = req.body;
+      clientId,
+      amount,
+      loanTypeId,
+      paymentFrequency,
+      loanTenure,
+    } = req.body;
 
     if (!clientId || !amount || !loanTypeId || !paymentFrequency || !loanTenure) {
-  return res.status(400).json({ message: "All fields are required." });
-}
+      return res.status(400).json({ message: "All fields are required." });
+    }
 
     const parsedAmount = Number(amount);
     const parsedLoanTerm = Number(loanTenure);
     const parsedLoanTypeId = Number(loanTypeId);
+    const parsedClientId = Number(clientId);
 
     if (parsedAmount <= 0 || parsedAmount > 100000) {
       return res.status(400).json({
@@ -1171,6 +1529,36 @@ app.post("/api/loans/apply", async (req, res) => {
       });
     }
 
+    const [borrowerRows] = await db.promise().query(
+      `
+      SELECT Client_ID
+      FROM BORROWER
+      WHERE Client_ID = ?
+      LIMIT 1
+      `,
+      [parsedClientId]
+    );
+
+    if (borrowerRows.length === 0) {
+      return res.status(400).json({ message: "Borrower account not found." });
+    }
+
+    const [existingLoanRows] = await db.promise().query(
+      `
+      SELECT Loan_ID, Loan_Status
+      FROM LOAN
+      WHERE Client_ID = ?
+      LIMIT 1
+      `,
+      [parsedClientId]
+    );
+
+    if (existingLoanRows.length > 0) {
+      return res.status(400).json({
+        message: "You already have a loan. Only one loan is allowed per borrower.",
+      });
+    }
+
     const [loanTypeRows] = await db.promise().query(
       `
       SELECT Loan_Type_ID, Loan_Type_Name, Interest_Rate
@@ -1178,7 +1566,7 @@ app.post("/api/loans/apply", async (req, res) => {
       WHERE Loan_Type_ID = ?
       LIMIT 1
       `,
-      [parsedLoanTypeId],
+      [parsedLoanTypeId]
     );
 
     if (loanTypeRows.length === 0) {
@@ -1188,74 +1576,55 @@ app.post("/api/loans/apply", async (req, res) => {
     const loanType = loanTypeRows[0];
     const interestRate = Number(loanType.Interest_Rate);
 
-    const parsedClientId = Number(clientId);
-
-const [borrowerRows] = await db.promise().query(
-  `
-  SELECT Client_ID
-  FROM BORROWER
-  WHERE Client_ID = ?
-  LIMIT 1
-  `,
-  [parsedClientId]
-);
-
-if (borrowerRows.length === 0) {
-  return res.status(400).json({ message: "Borrower account not found." });
-}
-
     const today = new Date();
     const firstDueDate = new Date(today);
-    
 
     const addTermToDate = (date, frequency, term) => {
-    if (frequency === "Daily") date.setDate(date.getDate() + term);
-  if (frequency === "Weekly") date.setDate(date.getDate() + term * 7);
-  if (frequency === "Semi-monthly") date.setDate(date.getDate() + term * 15);
-  if (frequency === "Monthly") date.setMonth(date.getMonth() + term);
+      if (frequency === "Daily") date.setDate(date.getDate() + term);
+      if (frequency === "Weekly") date.setDate(date.getDate() + term * 7);
+      if (frequency === "Semi-monthly") date.setDate(date.getDate() + term * 15);
+      if (frequency === "Monthly") date.setMonth(date.getMonth() + term);
     };
 
     addTermToDate(firstDueDate, paymentFrequency, 1);
-   
 
     const formattedToday = today.toISOString().split("T")[0];
     const formattedFirstDueDate = firstDueDate.toISOString().split("T")[0];
-    
 
     const interestAmount = parsedAmount * (interestRate / 100);
     const totalAmount = parsedAmount + interestAmount;
     const amortization = totalAmount / parsedLoanTerm;
 
-   const [loanResult] = await db.promise().query(
- `
-  INSERT INTO LOAN
-  (
-    Client_ID,
-    Loan_Type_ID,
-    Principal_Amount,
-    Disbursement_Date,
-    Interest_Amount,
-    Date_Approved,
-    First_Due_Date,
-    Loan_Status,
-    Loan_Tenure,
-    Payment_Frequency
-  )
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `,
-  [
-    parsedClientId,
-    parsedLoanTypeId,
-    parsedAmount,
-    formattedToday,
-    interestAmount,
-    null,
-    formattedFirstDueDate,
-    "Pending",
-    parsedLoanTerm,
-    paymentFrequency,
-  ],
-);
+    const [loanResult] = await db.promise().query(
+      `
+      INSERT INTO LOAN
+      (
+        Client_ID,
+        Loan_Type_ID,
+        Principal_Amount,
+        Disbursement_Date,
+        Interest_Amount,
+        Date_Approved,
+        First_Due_Date,
+        Loan_Status,
+        Loan_Tenure,
+        Payment_Frequency
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `,
+      [
+        parsedClientId,
+        parsedLoanTypeId,
+        parsedAmount,
+        formattedToday,
+        interestAmount,
+        null,
+        formattedFirstDueDate,
+        "Pending",
+        parsedLoanTerm,
+        paymentFrequency,
+      ]
+    );
 
     res.status(201).json({
       message: "Loan application submitted successfully.",
@@ -1270,6 +1639,8 @@ if (borrowerRows.length === 0) {
       },
     });
   } catch (error) {
+    console.log("Apply loan error:", error);
+
     res.status(500).json({
       message: error.message || "Server error.",
     });
@@ -1370,6 +1741,374 @@ app.post("/api/loan-types", (req, res) => {
       loanTypeId: result.insertId,
     });
   });
+});
+
+//business logic 50% loan 
+app.get("/api/client-loans/:clientId", (req, res) => {
+  const { clientId } = req.params;
+
+  const sql = `
+    SELECT 
+      l.Loan_ID,
+      l.Client_ID,
+      l.Loan_Type_ID,
+      l.Principal_Amount,
+      l.Disbursement_Date,
+      l.Interest_Amount,
+      l.Date_Approved,
+      l.First_Due_Date,
+      l.Loan_Status,
+      l.Loan_Tenure,
+      l.Payment_Frequency,
+      lt.Loan_Type_Name,
+      lt.Interest_Rate
+    FROM loan l
+    LEFT JOIN loan_type lt ON l.Loan_Type_ID = lt.Loan_Type_ID
+    WHERE l.Client_ID = ?
+    ORDER BY l.Loan_ID DESC
+  `;
+
+  db.query(sql, [clientId], (err, loans) => {
+    if (err) {
+      console.log("CLIENT LOANS ERROR:", err.sqlMessage);
+      return res.status(500).json({ message: err.sqlMessage });
+    }
+
+    const result = loans.map((loan) => {
+      const totalAmount =
+        Number(loan.Principal_Amount) + Number(loan.Interest_Amount);
+
+      const amortization = totalAmount / Number(loan.Loan_Tenure);
+
+      const schedules = [];
+
+      for (let i = 1; i <= loan.Loan_Tenure; i++) {
+        const dueDate = new Date(loan.Disbursement_Date);
+
+        if (loan.Payment_Frequency === "Daily") {
+          dueDate.setDate(dueDate.getDate() + i);
+        }
+
+        if (loan.Payment_Frequency === "Weekly") {
+          dueDate.setDate(dueDate.getDate() + i * 7);
+        }
+
+        if (loan.Payment_Frequency === "Semi-monthly") {
+          dueDate.setDate(dueDate.getDate() + i * 15);
+        }
+
+        if (loan.Payment_Frequency === "Monthly") {
+          dueDate.setMonth(dueDate.getMonth() + i);
+        }
+
+        schedules.push({
+          paymentNumber: i,
+          dueDate,
+          amount: amortization,
+        });
+      }
+
+      return {
+        ...loan,
+        Total_Amount: totalAmount,
+        schedules,
+      };
+    });
+
+    res.json(result);
+  });
+});
+
+app.get("/api/client-loan-details/:loanId", (req, res) => {
+  const { loanId } = req.params;
+
+  const sql = `
+    SELECT 
+      l.*,
+      lt.Loan_Type_Name,
+      lt.Interest_Rate
+    FROM loan l
+    LEFT JOIN loan_type lt ON l.Loan_Type_ID = lt.Loan_Type_ID
+    WHERE l.Loan_ID = ?
+  `;
+
+  db.query(sql, [loanId], (err, loans) => {
+    if (err) {
+      console.log("Loan details error:", err);
+      return res.status(500).json({ error: err });
+    }
+
+    if (loans.length === 0) {
+      return res.status(404).json({ message: "Loan not found" });
+    }
+
+    const paymentSql = `
+      SELECT *
+      FROM loan_payment
+      WHERE Loan_ID = ?
+      ORDER BY Payment_Date ASC
+    `;
+
+    db.query(paymentSql, [loanId], (err, payments) => {
+      if (err) {
+        console.log("Payment details error:", err);
+        return res.status(500).json({ error: err });
+      }
+
+      res.json({
+        ...loans[0],
+        payments,
+      });
+    });
+  });
+});
+//loan eligibility
+app.get("/api/client-loan-eligibility/:clientId", async (req, res) => {
+  const { clientId } = req.params;
+
+  try {
+    const [loans] = await db.promise().query(
+      `
+      SELECT
+        l.*,
+        lt.Interest_Rate,
+        lt.Loan_Type_Name
+      FROM LOAN l
+      INNER JOIN LOAN_TYPE lt ON l.Loan_Type_ID = lt.Loan_Type_ID
+      WHERE l.Client_ID = ?
+      ORDER BY l.Loan_ID DESC
+      LIMIT 1
+      `,
+      [clientId]
+    );
+
+    if (loans.length === 0) {
+      return res.json({
+        canLoan: true,
+        isReloan: false,
+        reason: "You can apply for a loan.",
+      });
+    }
+
+    const loan = loans[0];
+
+    if (String(loan.Loan_Status).toLowerCase() === "pending") {
+      return res.json({
+        canLoan: false,
+        isReloan: false,
+        reason: "You already have a pending loan application.",
+      });
+    }
+
+    const [paymentRows] = await db.promise().query(
+      `
+      SELECT COALESCE(SUM(Amortization_Amount), 0) AS totalPaid
+      FROM LOAN_PAYMENT
+      WHERE Loan_ID = ?
+      `,
+      [loan.Loan_ID]
+    );
+
+    const totalPaid = Number(paymentRows[0].totalPaid || 0);
+    const totalLoanAmount =
+      Number(loan.Principal_Amount || 0) + Number(loan.Interest_Amount || 0);
+
+    const paidPercentage =
+      totalLoanAmount > 0 ? (totalPaid / totalLoanAmount) * 100 : 0;
+
+    if (paidPercentage >= 50) {
+      return res.json({
+        canLoan: true,
+        isReloan: true,
+        reason: "You can reloan up to the amount you have already paid.",
+        loanId: loan.Loan_ID,
+        maxReloanAmount: totalPaid,
+        paidPercentage,
+        loanTypeId: loan.Loan_Type_ID,
+        loanTypeName: loan.Loan_Type_Name,
+        interestRate: Number(loan.Interest_Rate),
+        paymentFrequency: loan.Payment_Frequency,
+        loanTenure: loan.Loan_Tenure,
+      });
+    }
+
+    return res.json({
+      canLoan: false,
+      isReloan: false,
+      reason: "You can reloan once you have paid at least 50%.",
+      paidPercentage,
+    });
+  } catch (error) {
+    console.log("Eligibility error:", error);
+    res.status(500).json({ message: "Failed to check loan eligibility." });
+  }
+});
+
+//reloan
+app.post("/api/loans/reloan", async (req, res) => {
+  const { clientId, amount } = req.body;
+
+  if (!clientId || !amount || Number(amount) <= 0) {
+    return res.status(400).json({ message: "Valid reloan amount is required." });
+  }
+
+  const parsedAmount = Number(amount);
+  let connection;
+
+  try {
+    connection = await db.promise().getConnection();
+    await connection.beginTransaction();
+
+    const [loans] = await connection.query(
+      `
+      SELECT
+        l.*,
+        lt.Interest_Rate
+      FROM LOAN l
+      INNER JOIN LOAN_TYPE lt ON l.Loan_Type_ID = lt.Loan_Type_ID
+      WHERE l.Client_ID = ?
+      ORDER BY l.Loan_ID DESC
+      LIMIT 1
+      `,
+      [clientId]
+    );
+
+    if (loans.length === 0) {
+      await connection.rollback();
+      return res.status(404).json({ message: "Existing loan not found." });
+    }
+
+    const loan = loans[0];
+
+    if (String(loan.Loan_Status).toLowerCase() === "pending") {
+      await connection.rollback();
+      return res.status(400).json({
+        message: "You still have a pending loan application.",
+      });
+    }
+
+    const [paymentRows] = await connection.query(
+      `
+      SELECT COALESCE(SUM(Amortization_Amount), 0) AS totalPaid
+      FROM LOAN_PAYMENT
+      WHERE Loan_ID = ?
+      `,
+      [loan.Loan_ID]
+    );
+
+    const totalPaid = Number(paymentRows[0].totalPaid || 0);
+    const totalLoanAmount =
+      Number(loan.Principal_Amount || 0) + Number(loan.Interest_Amount || 0);
+
+    const paidPercentage =
+      totalLoanAmount > 0 ? (totalPaid / totalLoanAmount) * 100 : 0;
+
+    if (paidPercentage < 50) {
+      await connection.rollback();
+      return res.status(400).json({
+        message: "You can reloan once you have paid at least 50%.",
+      });
+    }
+
+    if (parsedAmount > totalPaid) {
+      await connection.rollback();
+      return res.status(400).json({
+        message: `Your maximum reloan amount is ₱${totalPaid.toFixed(2)}.`,
+      });
+    }
+
+    const interestRate = Number(loan.Interest_Rate || 0);
+    const newInterestAmount = parsedAmount * (interestRate / 100);
+
+    const today = new Date();
+    const firstDueDate = new Date(today);
+
+    if (loan.Payment_Frequency === "Daily") {
+      firstDueDate.setDate(firstDueDate.getDate() + 1);
+    }
+
+    if (loan.Payment_Frequency === "Weekly") {
+      firstDueDate.setDate(firstDueDate.getDate() + 7);
+    }
+
+    if (loan.Payment_Frequency === "Semi-monthly") {
+      firstDueDate.setDate(firstDueDate.getDate() + 15);
+    }
+
+    if (loan.Payment_Frequency === "Monthly") {
+      firstDueDate.setMonth(firstDueDate.getMonth() + 1);
+    }
+
+    const formattedToday = today.toISOString().split("T")[0];
+    const formattedFirstDueDate = firstDueDate.toISOString().split("T")[0];
+
+    await connection.query(
+      `
+      UPDATE LOAN
+      SET
+        Principal_Amount = Principal_Amount + ?,
+        Interest_Amount = Interest_Amount + ?,
+        Disbursement_Date = ?,
+        First_Due_Date = ?,
+        Date_Approved = NULL,
+        Loan_Status = 'Pending'
+      WHERE Loan_ID = ?
+      `,
+      [
+        parsedAmount,
+        newInterestAmount,
+        formattedToday,
+        formattedFirstDueDate,
+        loan.Loan_ID,
+      ]
+    );
+    const [latestBalanceRows] = await connection.query(
+  `
+  SELECT Remaining_Balance
+  FROM LOAN_PAYMENT
+  WHERE Loan_ID = ?
+  ORDER BY Payment_Date DESC, Payment_ID DESC
+  LIMIT 1
+  `,
+  [loan.Loan_ID]
+);
+
+const oldBalance =
+  latestBalanceRows.length > 0
+    ? Number(latestBalanceRows[0].Remaining_Balance)
+    : Number(loan.Principal_Amount) + Number(loan.Interest_Amount) - totalPaid;
+
+const newBalance = oldBalance + parsedAmount + newInterestAmount;
+
+
+await connection.query(
+  `
+  INSERT INTO LOAN_PAYMENT
+  (Loan_ID, Amortization_Amount, Payment_Date, Remaining_Balance)
+  VALUES (?, ?, CURDATE(), ?)
+  `,
+  [loan.Loan_ID, 0, newBalance]
+);
+    await connection.commit();
+
+    res.json({
+      message: "Reloan request submitted successfully.",
+      data: {
+        loanId: loan.Loan_ID,
+        reloanAmount: parsedAmount,
+        interestAmount: newInterestAmount,
+        maxReloanAmount: totalPaid,
+        status: "Pending",
+      },
+    });
+  } catch (error) {
+    if (connection) await connection.rollback();
+
+    console.log("Reloan error:", error);
+    res.status(500).json({ message: "Failed to submit reloan request." });
+  } finally {
+    if (connection) connection.release();
+  }
 });
 
 app.listen(5000, () => {

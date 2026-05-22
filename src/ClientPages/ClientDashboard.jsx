@@ -199,7 +199,7 @@ export default function ClientDashboard() {
                       value={formatMoney(loan.principalAmount)}
                     />
                     <Detail label="Interest Rate" value={loan.interestRate} />
-                    <Detail label="Loan Term" value={loan.term} />
+                    <Detail label="Loan Tenure" value={loan.term} />
                     <Detail
                       label="Remaining Balance"
                       value={formatMoney(loan.balance)}
@@ -223,11 +223,11 @@ export default function ClientDashboard() {
                     </button>
 
                     <button
-                      onClick={() => navigate("/details")}
-                      className="inter-bold rounded-xl border-2 border-[#126d71] px-5 py-4 text-[#126d71]"
-                    >
-                      Check Loan Details
-                    </button>
+  onClick={() => navigate("/outstandingLoans")}
+  className="rounded-2xl bg-[#126d71] px-5 py-3 font-bold text-white"
+>
+  View Outstanding Loans
+</button>
 
                     <button className="inter-bold rounded-xl border-2 border-[#ff6f61] px-5 py-4 text-[#ff6f61]">
                       View Payment History

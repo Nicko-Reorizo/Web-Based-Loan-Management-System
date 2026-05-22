@@ -1,14 +1,17 @@
-import { useState } from "react";
+
 import { UserCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
 
 export default function ClientNav() {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [canLoan, setCanLoan] = useState(true);
+const [loanMessage, setLoanMessage] = useState("");
 
   const authUser = JSON.parse(localStorage.getItem("authUser"));
-
+  const clientId = authUser?.Client_ID || authUser?.client_id || authUser?.id;
   const profileName =
     authUser?.name || authUser?.fullname || authUser?.username || "Client";
 
@@ -23,6 +26,18 @@ export default function ClientNav() {
     localStorage.removeItem("userRole");
     navigate("/login");
   };
+
+  useEffect(() => {
+  if (!clientId) return;
+
+  fetch(`http://localhost:5000/api/client-loan-eligibility/${clientId}`)
+    .then((res) => res.json())
+    .then((data) => {
+      setCanLoan(data.canLoan);
+      setLoanMessage(data.reason);
+    })
+    .catch((err) => console.error(err));
+}, [clientId]);
 
   return (
     <nav className="relative z-50 flex min-h-[70px] items-center justify-between bg-[#126d71] px-5 sm:px-8 lg:px-20">
@@ -42,11 +57,21 @@ export default function ClientNav() {
         </button>
 
         <button
-          className="inter-bold rounded-2xl bg-white px-4 py-2 text-[15px] text-[#126d71]"
-          onClick={() => goTo("/loan")}
-        >
-          Loan Now
-        </button>
+  className={`inter-bold rounded-2xl px-4 py-2 text-[15px] ${
+    canLoan
+      ? "bg-white text-[#126d71]"
+      : "cursor-not-allowed bg-gray-300 text-gray-500"
+  }`}
+  onClick={() => {
+    if (canLoan) {
+      goTo("/loan");
+    } else {
+      alert(loanMessage);
+    }
+  }}
+>
+  Loan Now
+</button>
 
         <div className="relative">
           <button
@@ -94,11 +119,21 @@ export default function ClientNav() {
           </button>
 
           <button
-            className="inter-bold w-fit rounded-2xl bg-white px-4 py-2 text-[15px] text-[#126d71]"
-            onClick={() => goTo("/loan")}
-          >
-            Loan Now
-          </button>
+  className={`inter-bold w-fit rounded-2xl px-4 py-2 text-[15px] ${
+    canLoan
+      ? "bg-white text-[#126d71]"
+      : "cursor-not-allowed bg-gray-300 text-gray-500"
+  }`}
+  onClick={() => {
+    if (canLoan) {
+      goTo("/loan");
+    } else {
+      alert(loanMessage);
+    }
+  }}
+>
+  Loan Now
+</button>
 
           <button
             className="flex w-fit items-center gap-2 rounded-2xl bg-white px-4 py-2 text-[#126d71]"
