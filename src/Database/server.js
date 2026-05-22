@@ -1708,15 +1708,20 @@ app.post("/api/loans/apply", async (req, res) => {
       SELECT Loan_ID, Loan_Status
       FROM LOAN
       WHERE Client_ID = ?
+        AND Loan_Status IN ('Pending', 'Approved')
+      ORDER BY Loan_ID DESC
       LIMIT 1
       `,
       [parsedClientId],
     );
 
     if (existingLoanRows.length > 0) {
+      const existingStatus = existingLoanRows[0].Loan_Status;
       return res.status(400).json({
         message:
-          "You already have a loan. Only one loan is allowed per borrower.",
+          existingStatus === "Pending"
+            ? "You already have a pending loan application."
+            : "You already have an approved loan. Please use the reloan option once eligible.",
       });
     }
 
@@ -2129,11 +2134,23 @@ app.get("/api/client-loan-eligibility/:clientId", async (req, res) => {
 
     const loan = loans[0];
 
-    if (String(loan.Loan_Status).toLowerCase() === "pending") {
+    const loanStatus = String(loan.Loan_Status).toLowerCase();
+
+    if (loanStatus === "pending") {
       return res.json({
         canLoan: false,
         isReloan: false,
         reason: "You already have a pending loan application.",
+      });
+    }
+
+    if (loanStatus === "rejected") {
+      return res.json({
+        canLoan: true,
+        isReloan: false,
+        reason: "Your previous loan application was rejected. You can submit a new application.",
+        latestLoanStatus: loan.Loan_Status,
+        latestLoanId: loan.Loan_ID,
       });
     }
 

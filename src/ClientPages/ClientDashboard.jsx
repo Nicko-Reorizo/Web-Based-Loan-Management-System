@@ -52,6 +52,7 @@ export default function ClientDashboard() {
   const hasLoan = loan !== null;
   const isPending = loan?.status === "Pending";
   const isApproved = loan?.status === "Approved";
+  const isRejected = loan?.status === "Rejected";
 
   const formatMoney = (amount) =>
     `PHP ${Number(amount || 0).toLocaleString("en-PH", {
@@ -167,6 +168,39 @@ export default function ClientDashboard() {
                   View Payment History
                 </button>
               </div>
+            </div>
+          )}
+
+          {!loading && !error && hasLoan && isRejected && (
+            <div className="rounded-3xl bg-white p-10 text-center shadow-md">
+              <div className="mx-auto mb-5 w-fit rounded-full bg-red-100 px-6 py-3 text-red-700">
+                <p className="inter-bold">Application Rejected</p>
+              </div>
+
+              <h2 className="inter-bold text-3xl text-gray-800">
+                Your Loan Application Was Rejected
+              </h2>
+
+              <p className="inter-reg mx-auto mt-3 max-w-xl text-gray-500">
+                Your previous loan request was not approved. You may review your
+                information and submit a new loan application.
+              </p>
+
+              <div className="mt-8 grid gap-4 md:grid-cols-3">
+                <InfoCard label="Loan ID" value={loan.loanId} />
+                <InfoCard
+                  label="Requested Amount"
+                  value={formatMoney(loan.principalAmount)}
+                />
+                <InfoCard label="Status" value={loan.status} />
+              </div>
+
+              <button
+                onClick={() => navigate("/loan")}
+                className="inter-bold mt-8 rounded-full bg-[#ff6f61] px-10 py-4 text-white"
+              >
+                Apply Again
+              </button>
             </div>
           )}
 
