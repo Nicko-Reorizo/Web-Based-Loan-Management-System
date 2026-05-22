@@ -2351,6 +2351,54 @@ app.post("/api/loans/reloan", async (req, res) => {
   }
 });
 
+// payment history
+app.get("/api/client-payment-history/:clientId", async (req, res) => {
+  const { clientId } = req.params;
+
+  if (!clientId) {
+    return res.status(400).json({ message: "Client ID is required." });
+  }
+
+  try {
+    const [payments] = await db.promise().query(
+      `
+      SELECT
+        p.Payment_ID,
+        p.Loan_ID,
+        p.Amortization_Amount,
+        p.Payment_Date,
+        p.Remaining_Balance,
+        l.Principal_Amount,
+        l.Interest_Amount,
+        l.Loan_Status,
+        b.Client_FullName
+      FROM LOAN_PAYMENT p
+      INNER JOIN LOAN l ON p.Loan_ID = l.Loan_ID
+      INNER JOIN BORROWER b ON l.Client_ID = b.Client_ID
+      WHERE l.Client_ID = ?
+        AND p.Amortization_Amount > 0
+      ORDER BY p.Payment_Date DESC, p.Payment_ID DESC
+      `,
+      [clientId]
+    );
+
+    const totalPaid = payments.reduce(
+      (sum, payment) => sum + Number(payment.Amortization_Amount || 0),
+      0
+    );
+
+    res.json({
+      totalPaid,
+      payments,
+    });
+  } catch (error) {
+    console.log("Client payment history error:", error);
+    res.status(500).json({
+      message: "Failed to load payment history.",
+    });
+  }
+});
+
 app.listen(5000, () => {
   console.log("Server running on http://localhost:5000");
 });

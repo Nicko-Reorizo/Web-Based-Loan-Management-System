@@ -149,7 +149,7 @@ export default function Register() {
         relationshipToBorrower: formData.relationshipToBorrower.trim(),
       };
 
-      const response = await fetch("http://localhost:5000/borrower-register", {
+      const response = await fetch("http://localhost:5000/client-register", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

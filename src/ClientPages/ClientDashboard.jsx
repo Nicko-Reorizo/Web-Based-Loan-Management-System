@@ -229,9 +229,12 @@ export default function ClientDashboard() {
   View Outstanding Loans
 </button>
 
-                    <button className="inter-bold rounded-xl border-2 border-[#ff6f61] px-5 py-4 text-[#ff6f61]">
-                      View Payment History
-                    </button>
+                    <button
+  onClick={() => navigate("/paymentHistory")}
+  className="inter-bold rounded-xl border-2 border-[#ff6f61] px-5 py-4 text-[#ff6f61]"
+>
+  View Payment History
+</button>
                   </div>
                 </div>
               </div>

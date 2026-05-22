@@ -6,12 +6,13 @@ import Navbar from "./components/navbar.jsx";
 import LandingPage from "./ClientPages/LandingPage.jsx";
 import LoanNow from "./ClientPages/LoanNow.jsx";
 import Details from "./ClientPages/LoanDetails.jsx";
-import BorrowerInfo from "./ClientPages/BorrowerInfo.jsx";
+
 import ClientLogin from "./ClientPages/Login.jsx";
 import ClientRegister from "./ClientPages/Register.jsx";
 import ClientDashboard from "./ClientPages/ClientDashboard.jsx";
 import OutstandingLoans from "./ClientPages/OutstandingLoans";
 import LoanDetails from "./ClientPages/LoanDetails";
+import PaymentHistory from "./ClientPages/PaymentHistory.jsx";
 
 import AdminLogin from "./AdminPages/Login.jsx";
 import AdminRegister from "./AdminPages/Register.jsx";
@@ -30,12 +31,12 @@ function App() {
           <Route path="/"  element={<LandingPage/>}/>
           <Route path="/login" element={<ClientLogin/>}/>
           <Route path="/signup" element={<ClientRegister/>}/>
-          <Route path="/borrower-info" element={<BorrowerInfo/>}/>
+          
           <Route path="/loan" element={<LoanNow/>}/>
           <Route path="/details" element={<Details/>} />
           <Route path="/clientDashboard" element={<ClientDashboard />} />
           <Route path="/loan" element={<LoanNow />} />
-
+          <Route path="/paymentHistory" element={<PaymentHistory />} />
           {/* Admin Side */}
           <Route path="/outstandingLoans" element={<OutstandingLoans />} />
           <Route path="/loanDetails/:loanId" element={<LoanDetails />} />

@@ -136,7 +136,7 @@ export default function Loans() {
                     <th className="px-6 py-4 font-semibold">Name</th>
                     <th className="px-6 py-4 font-semibold">Principal Amount</th>
                     <th className="px-6 py-4 font-semibold">Monthly Ammo</th>
-                    <th className="px-6 py-4 font-semibold">Maturity Date</th>
+                    <th className="px-6 py-4 font-semibold">Due Start Date</th>
                     <th className="px-6 py-4 font-semibold">Balance</th>
                     <th className="px-6 py-4 font-semibold">Loan Tenure</th>
                     <th className="px-6 py-4 font-semibold">Interest Amount</th>
