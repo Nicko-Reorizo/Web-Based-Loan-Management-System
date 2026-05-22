@@ -35,93 +35,53 @@ const verifyPassword = (password, storedHash) => {
   );
 };
 
-const createBorrowerTable = `
-  CREATE TABLE IF NOT EXISTS BORROWER (
-    Client_ID INT AUTO_INCREMENT PRIMARY KEY,
-    Client_FullName VARCHAR(150) NOT NULL,
-    Email VARCHAR(150) NULL,
-    Password_Hash VARCHAR(255) NULL,
-    Birth_Date DATE NULL,
-    Gender VARCHAR(50) NULL,
-    Civil_Status VARCHAR(50) NULL,
-    Valid_ID_Type VARCHAR(100) NULL,
-    Valid_ID_Number VARCHAR(100) NULL,
-    House_Number VARCHAR(100) NULL,
-    Street VARCHAR(150) NOT NULL,
-    Barangay VARCHAR(150) NULL,
-    City VARCHAR(100) NOT NULL,
-    Province VARCHAR(100) NOT NULL,
-    ZIP VARCHAR(20) NOT NULL,
-    Phone_Number VARCHAR(30) NOT NULL,
-    Occupation VARCHAR(100) NULL,
-    Employment_Status VARCHAR(100) NULL,
-    Monthly_Salary DECIMAL(12,2) NULL,
-    Employer_Name VARCHAR(150) NULL,
-    Source_Of_Income VARCHAR(150) NULL,
-    Emergency_Contact_Name VARCHAR(150) NULL,
-    Emergency_Contact_Number VARCHAR(30) NULL,
-    Relationship_To_Borrower VARCHAR(100) NULL,
-    Created_At TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-  )
-`;
-
-const ensureBorrowerProfileColumns = async () => {
-  const extraColumns = [
-    ["Email", "VARCHAR(150) NULL"],
-    ["Password_Hash", "VARCHAR(255) NULL"],
-    ["Gender", "VARCHAR(50) NULL"],
-    ["Civil_Status", "VARCHAR(50) NULL"],
-    ["Valid_ID_Type", "VARCHAR(100) NULL"],
-    ["Valid_ID_Number", "VARCHAR(100) NULL"],
-    ["House_Number", "VARCHAR(100) NULL"],
-    ["Barangay", "VARCHAR(150) NULL"],
-    ["Birth_Date", "DATE NULL"],
-    ["Occupation", "VARCHAR(100) NULL"],
-    ["Employment_Status", "VARCHAR(100) NULL"],
-    ["Monthly_Salary", "DECIMAL(12,2) NULL"],
-    ["Employer_Name", "VARCHAR(150) NULL"],
-    ["Source_Of_Income", "VARCHAR(150) NULL"],
-    ["Emergency_Contact_Name", "VARCHAR(150) NULL"],
-    ["Emergency_Contact_Number", "VARCHAR(30) NULL"],
-    ["Relationship_To_Borrower", "VARCHAR(100) NULL"],
-    ["Created_At", "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"],
-  ];
-
-  try {
-    await db.promise().query(createBorrowerTable);
-    const [columns] = await db.promise().query("SHOW COLUMNS FROM BORROWER");
-    const existingColumns = new Set(columns.map((column) => column.Field));
-
-    for (const [columnName, columnDefinition] of extraColumns) {
-      if (!existingColumns.has(columnName)) {
-        await db
-          .promise()
-          .query(
-            `ALTER TABLE BORROWER ADD COLUMN ${columnName} ${columnDefinition}`,
-          );
-      }
-    }
-  } catch (error) {
-    console.error("Failed to ensure BORROWER table:", error);
-  }
-};
-
-ensureBorrowerProfileColumns();
-
 // showing borrowers
 app.get("/api/borrowers", (req, res) => {
   const sql = `
-    SELECT DISTINCT b.*
+    SELECT DISTINCT
+      b.Client_ID,
+      b.Client_FullName,
+      b.Email,
+      b.Phone_Number,
+      b.Birth_Date,
+      b.Gender,
+      b.Civil_Status,
+      b.Created_At,
+
+      a.House_Number,
+      a.Street,
+      a.Barangay,
+      a.City,
+      a.Province,
+      a.ZIP,
+
+      i.Valid_ID_Type,
+      i.Valid_ID_Number,
+
+      e.Occupation,
+      e.Employment_Status,
+      e.Monthly_Salary,
+      e.Employer_Name,
+      e.Source_Of_Income,
+
+      ec.Emergency_Contact_Name,
+      ec.Emergency_Contact_Number,
+      ec.Relationship_To_Borrower
     FROM BORROWER b
+    LEFT JOIN BORROWER_ADDRESS a ON b.Client_ID = a.Client_ID
+    LEFT JOIN BORROWER_IDENTIFICATION i ON b.Client_ID = i.Client_ID
+    LEFT JOIN BORROWER_EMPLOYMENT e ON b.Client_ID = e.Client_ID
+    LEFT JOIN BORROWER_EMERGENCY_CONTACT ec ON b.Client_ID = ec.Client_ID
     INNER JOIN LOAN l ON b.Client_ID = l.Client_ID
     WHERE l.Loan_Status = 'Approved'
   `;
 
   db.query(sql, (err, results) => {
     if (err) {
-      console.error(err);
+      console.error("Borrowers query error:", err);
       return res.status(500).json({ error: "Database error" });
     }
+
     res.json(results);
   });
 });
@@ -134,35 +94,43 @@ app.get("/api/borrowers/:id", async (req, res) => {
     const [rows] = await db.promise().query(
       `
       SELECT
-        Client_ID,
-        Client_FullName,
-        Email,
-        Phone_Number,
-        Birth_Date,
-        Gender,
-        Civil_Status,
-        Valid_ID_Type,
-        Valid_ID_Number,
-        House_Number,
-        Street,
-        Barangay,
-        City,
-        Province,
-        ZIP,
-        Occupation,
-        Employment_Status,
-        Monthly_Salary,
-        Source_Of_Income,
-        Employer_Name,
-        Emergency_Contact_Name,
-        Emergency_Contact_Number,
-        Relationship_To_Borrower,
-        Created_At
-      FROM BORROWER
-      WHERE Client_ID = ?
+        b.Client_ID,
+        b.Client_FullName,
+        b.Email,
+        b.Phone_Number,
+        b.Birth_Date,
+        b.Gender,
+        b.Civil_Status,
+        b.Created_At,
+
+        a.House_Number,
+        a.Street,
+        a.Barangay,
+        a.City,
+        a.Province,
+        a.ZIP,
+
+        i.Valid_ID_Type,
+        i.Valid_ID_Number,
+
+        e.Occupation,
+        e.Employment_Status,
+        e.Monthly_Salary,
+        e.Employer_Name,
+        e.Source_Of_Income,
+
+        ec.Emergency_Contact_Name,
+        ec.Emergency_Contact_Number,
+        ec.Relationship_To_Borrower
+      FROM BORROWER b
+      LEFT JOIN BORROWER_ADDRESS a ON b.Client_ID = a.Client_ID
+      LEFT JOIN BORROWER_IDENTIFICATION i ON b.Client_ID = i.Client_ID
+      LEFT JOIN BORROWER_EMPLOYMENT e ON b.Client_ID = e.Client_ID
+      LEFT JOIN BORROWER_EMERGENCY_CONTACT ec ON b.Client_ID = ec.Client_ID
+      WHERE b.Client_ID = ?
       LIMIT 1
       `,
-      [id]
+      [id],
     );
 
     if (rows.length === 0) {
@@ -208,18 +176,45 @@ app.put("/api/borrowers/:id", async (req, res) => {
     !Client_FullName ||
     !Email ||
     !Phone_Number ||
+    !Birth_Date ||
+    !Gender ||
+    !Civil_Status ||
+    !Valid_ID_Type ||
+    !Valid_ID_Number ||
+    !House_Number ||
     !Street ||
+    !Barangay ||
     !City ||
     !Province ||
-    !ZIP
+    !ZIP ||
+    !Occupation ||
+    !Employment_Status ||
+    !Monthly_Salary ||
+    !Source_Of_Income ||
+    !Emergency_Contact_Name ||
+    !Emergency_Contact_Number ||
+    !Relationship_To_Borrower
   ) {
-    return res.status(400).json({
-      message: "Name, email, phone, street, city, province, and ZIP are required.",
-    });
+    return res.status(400).json({ message: "All fields are required." });
   }
 
+  let connection;
+
   try {
-    await db.promise().query(
+    connection = await db.promise().getConnection();
+    await connection.beginTransaction();
+
+    const [borrowerCheck] = await connection.query(
+      `SELECT Client_ID FROM BORROWER WHERE Client_ID = ? LIMIT 1`,
+      [id],
+    );
+
+    if (borrowerCheck.length === 0) {
+      await connection.rollback();
+      return res.status(404).json({ message: "Borrower not found." });
+    }
+
+    await connection.query(
       `
       UPDATE BORROWER
       SET
@@ -228,54 +223,90 @@ app.put("/api/borrowers/:id", async (req, res) => {
         Phone_Number = ?,
         Birth_Date = ?,
         Gender = ?,
-        Civil_Status = ?,
-        Valid_ID_Type = ?,
-        Valid_ID_Number = ?,
-        House_Number = ?,
-        Street = ?,
-        Barangay = ?,
-        City = ?,
-        Province = ?,
-        ZIP = ?,
-        Occupation = ?,
-        Employment_Status = ?,
-        Monthly_Salary = ?,
-        Source_Of_Income = ?,
-        Employer_Name = ?,
-        Emergency_Contact_Name = ?,
-        Emergency_Contact_Number = ?,
-        Relationship_To_Borrower = ?
+        Civil_Status = ?
       WHERE Client_ID = ?
       `,
       [
         Client_FullName,
         Email,
         Phone_Number,
-        Birth_Date || null,
-        Gender || null,
-        Civil_Status || null,
-        Valid_ID_Type || null,
-        Valid_ID_Number || null,
-        House_Number || null,
-        Street,
-        Barangay || null,
-        City,
-        Province,
-        ZIP,
-        Occupation || null,
-        Employment_Status || null,
-        Monthly_Salary || null,
-        Source_Of_Income || null,
-        Employer_Name || null,
-        Emergency_Contact_Name || null,
-        Emergency_Contact_Number || null,
-        Relationship_To_Borrower || null,
+        Birth_Date,
+        Gender,
+        Civil_Status,
         id,
-      ]
+      ],
     );
+
+    await connection.query(
+      `
+      UPDATE BORROWER_ADDRESS
+      SET
+        House_Number = ?,
+        Street = ?,
+        Barangay = ?,
+        City = ?,
+        Province = ?,
+        ZIP = ?
+      WHERE Client_ID = ?
+      `,
+      [House_Number, Street, Barangay, City, Province, ZIP, id],
+    );
+
+    await connection.query(
+      `
+      UPDATE BORROWER_IDENTIFICATION
+      SET
+        Valid_ID_Type = ?,
+        Valid_ID_Number = ?
+      WHERE Client_ID = ?
+      `,
+      [Valid_ID_Type, Valid_ID_Number, id],
+    );
+
+    await connection.query(
+      `
+      UPDATE BORROWER_EMPLOYMENT
+      SET
+        Occupation = ?,
+        Employment_Status = ?,
+        Monthly_Salary = ?,
+        Employer_Name = ?,
+        Source_Of_Income = ?
+      WHERE Client_ID = ?
+      `,
+      [
+        Occupation,
+        Employment_Status,
+        Monthly_Salary,
+        Employer_Name || null,
+        Source_Of_Income,
+        id,
+      ],
+    );
+
+    await connection.query(
+      `
+      UPDATE BORROWER_EMERGENCY_CONTACT
+      SET
+        Emergency_Contact_Name = ?,
+        Emergency_Contact_Number = ?,
+        Relationship_To_Borrower = ?
+      WHERE Client_ID = ?
+      `,
+      [
+        Emergency_Contact_Name,
+        Emergency_Contact_Number,
+        Relationship_To_Borrower,
+        id,
+      ],
+    );
+
+    await connection.commit();
 
     res.json({ message: "Borrower updated successfully." });
   } catch (error) {
+    if (connection) await connection.rollback();
+
     console.log("Update borrower error:", error);
 
     if (error.code === "ER_DUP_ENTRY") {
@@ -285,138 +316,232 @@ app.put("/api/borrowers/:id", async (req, res) => {
     }
 
     res.status(500).json({ message: "Failed to update borrower." });
+  } finally {
+    if (connection) connection.release();
   }
 });
+
 //add borrower
 app.post("/api/admin/borrowers", async (req, res) => {
+  const {
+    Client_FullName,
+    Email,
+    Phone_Number,
+    Password,
+    ConfirmPassword,
+    Birth_Date,
+    Gender,
+    Civil_Status,
+    Valid_ID_Type,
+    Valid_ID_Number,
+    House_Number,
+    Street,
+    Barangay,
+    City,
+    Province,
+    ZIP,
+    Occupation,
+    Employment_Status,
+    Monthly_Salary,
+    Employer_Name,
+    Source_Of_Income,
+    Emergency_Contact_Name,
+    Emergency_Contact_Number,
+    Relationship_To_Borrower,
+  } = req.body;
+
+  if (
+    !Client_FullName ||
+    !Email ||
+    !Phone_Number ||
+    !Password ||
+    !ConfirmPassword ||
+    !Birth_Date ||
+    !Gender ||
+    !Civil_Status ||
+    !Valid_ID_Type ||
+    !Valid_ID_Number ||
+    !House_Number ||
+    !Street ||
+    !Barangay ||
+    !City ||
+    !Province ||
+    !ZIP ||
+    !Occupation ||
+    !Employment_Status ||
+    !Monthly_Salary ||
+    !Source_Of_Income ||
+    !Emergency_Contact_Name ||
+    !Emergency_Contact_Number ||
+    !Relationship_To_Borrower
+  ) {
+    return res.status(400).json({ message: "All fields are required." });
+  }
+
+  if (!emailPattern.test(Email)) {
+    return res
+      .status(400)
+      .json({ message: "Please enter a valid email address." });
+  }
+
+  if (Password !== ConfirmPassword) {
+    return res
+      .status(400)
+      .json({ message: "Password and confirm password must match." });
+  }
+
+  if (!passwordPattern.test(Password)) {
+    return res.status(400).json({
+      message:
+        "Password must be at least 8 characters and include uppercase, lowercase, and a number.",
+    });
+  }
+
+  const parsedSalary = Number(Monthly_Salary);
+
+  if (Number.isNaN(parsedSalary) || parsedSalary <= 0) {
+    return res
+      .status(400)
+      .json({ message: "Monthly salary must be greater than 0." });
+  }
+
+  let connection;
+
   try {
-    const {
-      Client_FullName,
-      Email,
-      Phone_Number,
-      Password,
-      ConfirmPassword,
-      Birth_Date,
-      Gender,
-      Civil_Status,
-      Valid_ID_Type,
-      Valid_ID_Number,
-      House_Number,
-      Street,
-      Barangay,
-      City,
-      Province,
-      ZIP,
-      Occupation,
-      Employment_Status,
-      Monthly_Salary,
-      Source_Of_Income,
-      Employer_Name,
-      Emergency_Contact_Name,
-      Emergency_Contact_Number,
-      Relationship_To_Borrower,
-    } = req.body;
+    const [existingBorrowers] = await db.promise().query(
+      `
+      SELECT Client_ID
+      FROM BORROWER
+      WHERE Email = ? OR Phone_Number = ?
+      LIMIT 1
+      `,
+      [Email, Phone_Number],
+    );
 
-    if (
-      !Client_FullName ||
-      !Email ||
-      !Phone_Number ||
-      !Password ||
-      !ConfirmPassword ||
-      !Birth_Date ||
-      !Gender ||
-      !Civil_Status ||
-      !Valid_ID_Type ||
-      !Valid_ID_Number ||
-      !House_Number ||
-      !Street ||
-      !Barangay ||
-      !City ||
-      !Province ||
-      !ZIP ||
-      !Occupation ||
-      !Employment_Status ||
-      !Monthly_Salary ||
-      !Source_Of_Income ||
-      !Emergency_Contact_Name ||
-      !Emergency_Contact_Number ||
-      !Relationship_To_Borrower
-    ) {
-      return res.status(400).json({ message: "All fields are required." });
+    if (existingBorrowers.length > 0) {
+      return res.status(400).json({
+        message: "Email or phone number already exists.",
+      });
     }
 
-    if (Password !== ConfirmPassword) {
-      return res.status(400).json({ message: "Passwords do not match." });
-    }
+    connection = await db.promise().getConnection();
+    await connection.beginTransaction();
 
     const passwordHash = hashPassword(Password);
 
-    const [result] = await db.promise().query(
+    const [borrowerResult] = await connection.query(
       `
-      INSERT INTO BORROWER (
+      INSERT INTO BORROWER
+      (
         Client_FullName,
         Email,
-        Phone_Number,
         Password_Hash,
         Birth_Date,
         Gender,
         Civil_Status,
-        Valid_ID_Type,
-        Valid_ID_Number,
-        House_Number,
-        Street,
-        Barangay,
-        City,
-        Province,
-        ZIP,
-        Occupation,
-        Employment_Status,
-        Monthly_Salary,
-        Source_Of_Income,
-        Employer_Name,
-        Emergency_Contact_Name,
-        Emergency_Contact_Number,
-        Relationship_To_Borrower
+        Phone_Number
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
       `,
       [
         Client_FullName,
         Email,
-        Phone_Number,
         passwordHash,
         Birth_Date,
         Gender,
         Civil_Status,
-        Valid_ID_Type,
-        Valid_ID_Number,
+        Phone_Number,
+      ],
+    );
+
+    const clientId = borrowerResult.insertId;
+
+    await connection.query(
+      `
+      INSERT INTO BORROWER_ADDRESS
+      (
+        Client_ID,
         House_Number,
         Street,
         Barangay,
         City,
         Province,
-        ZIP,
+        ZIP
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+      `,
+      [clientId, House_Number, Street, Barangay, City, Province, ZIP],
+    );
+
+    await connection.query(
+      `
+      INSERT INTO BORROWER_IDENTIFICATION
+      (
+        Client_ID,
+        Valid_ID_Type,
+        Valid_ID_Number
+      )
+      VALUES (?, ?, ?)
+      `,
+      [clientId, Valid_ID_Type, Valid_ID_Number],
+    );
+
+    await connection.query(
+      `
+      INSERT INTO BORROWER_EMPLOYMENT
+      (
+        Client_ID,
         Occupation,
         Employment_Status,
         Monthly_Salary,
-        Source_Of_Income,
+        Employer_Name,
+        Source_Of_Income
+      )
+      VALUES (?, ?, ?, ?, ?, ?)
+      `,
+      [
+        clientId,
+        Occupation,
+        Employment_Status,
+        parsedSalary,
         Employer_Name || null,
+        Source_Of_Income,
+      ],
+    );
+
+    await connection.query(
+      `
+      INSERT INTO BORROWER_EMERGENCY_CONTACT
+      (
+        Client_ID,
+        Emergency_Contact_Name,
+        Emergency_Contact_Number,
+        Relationship_To_Borrower
+      )
+      VALUES (?, ?, ?, ?)
+      `,
+      [
+        clientId,
         Emergency_Contact_Name,
         Emergency_Contact_Number,
         Relationship_To_Borrower,
-      ]
+      ],
     );
+
+    await connection.commit();
 
     res.status(201).json({
       message: "Borrower added successfully.",
-      clientId: result.insertId,
+      clientId,
     });
   } catch (error) {
+    if (connection) await connection.rollback();
+
     console.log("Admin add borrower error:", error);
 
-    res.status(500).json({
-      message: "Failed to add borrower.",
-    });
+    res.status(500).json({ message: "Failed to add borrower." });
+  } finally {
+    if (connection) connection.release();
   }
 });
 //delete borrower
@@ -429,40 +554,23 @@ app.delete("/api/borrowers/:id", async (req, res) => {
     await connection.beginTransaction();
 
     const [loans] = await connection.query(
-      `
-      SELECT Loan_ID
-      FROM LOAN
-      WHERE Client_ID = ?
-      `,
-      [id]
+      `SELECT Loan_ID FROM LOAN WHERE Client_ID = ?`,
+      [id],
     );
 
     const loanIds = loans.map((loan) => loan.Loan_ID);
 
     if (loanIds.length > 0) {
-      await connection.query(
-        `
-        DELETE FROM LOAN_PAYMENT
-        WHERE Loan_ID IN (?)
-        `,
-        [loanIds]
-      );
+      await connection.query(`DELETE FROM LOAN_PAYMENT WHERE Loan_ID IN (?)`, [
+        loanIds,
+      ]);
 
-      await connection.query(
-        `
-        DELETE FROM LOAN
-        WHERE Client_ID = ?
-        `,
-        [id]
-      );
+      await connection.query(`DELETE FROM LOAN WHERE Client_ID = ?`, [id]);
     }
 
     const [deleteResult] = await connection.query(
-      `
-      DELETE FROM BORROWER
-      WHERE Client_ID = ?
-      `,
-      [id]
+      `DELETE FROM BORROWER WHERE Client_ID = ?`,
+      [id],
     );
 
     if (deleteResult.affectedRows === 0) {
@@ -836,20 +944,25 @@ app.get("/api/pending-loans", (req, res) => {
       l.Loan_Tenure,
       l.Payment_Frequency,
       b.Client_FullName,
-      b.Street,
-      b.Barangay,
-      b.City,
-      b.Province,
-      b.ZIP,
-      b.Phone_Number
+      b.Phone_Number,
+      a.Street,
+      a.Barangay,
+      a.City,
+      a.Province,
+      a.ZIP
     FROM LOAN l
     INNER JOIN BORROWER b ON l.Client_ID = b.Client_ID
+    LEFT JOIN BORROWER_ADDRESS a ON b.Client_ID = a.Client_ID
     WHERE l.Loan_Status = 'Pending'
     ORDER BY l.Loan_ID ASC
   `;
 
   db.query(sql, (err, results) => {
-    if (err) return res.status(500).json({ error: "Failed to fetch pending loans" });
+    if (err) {
+      console.error("Pending loans error:", err);
+      return res.status(500).json({ error: "Failed to fetch pending loans" });
+    }
+
     res.json(results);
   });
 });
@@ -1158,55 +1271,100 @@ app.post("/client-register", async (req, res) => {
     await connection.beginTransaction();
 
     const passwordHash = hashPassword(password);
+
     const [borrowerResult] = await connection.query(
-      `INSERT INTO BORROWER
-       (
-         Client_FullName,
-         Email,
-         Password_Hash,
-         Phone_Number,
-         Birth_Date,
-         Gender,
-         Civil_Status,
-         Valid_ID_Type,
-         Valid_ID_Number,
-         House_Number,
-         Street,
-         Barangay,
-         City,
-         Province,
-         ZIP,
-         Occupation,
-         Employment_Status,
-         Monthly_Salary,
-         Source_Of_Income,
-         Employer_Name,
-         Emergency_Contact_Name,
-         Emergency_Contact_Number,
-         Relationship_To_Borrower
-       )
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `
+  INSERT INTO BORROWER
+  (
+    Client_FullName,
+    Email,
+    Password_Hash,
+    Birth_Date,
+    Gender,
+    Civil_Status,
+    Phone_Number
+  )
+  VALUES (?, ?, ?, ?, ?, ?, ?)
+  `,
       [
         fullName,
         email,
         passwordHash,
-        phoneNumber,
         birthDate,
         gender,
         civilStatus,
-        validIdType,
-        validIdNumber,
-        houseNumber,
-        street,
-        barangay,
-        city,
-        province,
-        zip,
+        phoneNumber,
+      ],
+    );
+
+    const clientId = borrowerResult.insertId;
+
+    await connection.query(
+      `
+  INSERT INTO BORROWER_ADDRESS
+  (
+    Client_ID,
+    House_Number,
+    Street,
+    Barangay,
+    City,
+    Province,
+    ZIP
+  )
+  VALUES (?, ?, ?, ?, ?, ?, ?)
+  `,
+      [clientId, houseNumber, street, barangay, city, province, zip],
+    );
+
+    await connection.query(
+      `
+  INSERT INTO BORROWER_IDENTIFICATION
+  (
+    Client_ID,
+    Valid_ID_Type,
+    Valid_ID_Number
+  )
+  VALUES (?, ?, ?)
+  `,
+      [clientId, validIdType, validIdNumber],
+    );
+
+    await connection.query(
+      `
+  INSERT INTO BORROWER_EMPLOYMENT
+  (
+    Client_ID,
+    Occupation,
+    Employment_Status,
+    Monthly_Salary,
+    Employer_Name,
+    Source_Of_Income
+  )
+  VALUES (?, ?, ?, ?, ?, ?)
+  `,
+      [
+        clientId,
         occupation,
         employmentStatus,
         parsedSalary,
-        sourceOfIncome,
         employerName || null,
+        sourceOfIncome,
+      ],
+    );
+
+    await connection.query(
+      `
+  INSERT INTO BORROWER_EMERGENCY_CONTACT
+  (
+    Client_ID,
+    Emergency_Contact_Name,
+    Emergency_Contact_Number,
+    Relationship_To_Borrower
+  )
+  VALUES (?, ?, ?, ?)
+  `,
+      [
+        clientId,
         emergencyContactName,
         emergencyContactNumber,
         relationshipToBorrower,
@@ -1217,9 +1375,9 @@ app.post("/client-register", async (req, res) => {
 
     return res.status(201).json({
       message: "Account created successfully.",
-      clientId: borrowerResult.insertId,
+      clientId,
       user: {
-        id: borrowerResult.insertId,
+        id: clientId,
         name: fullName,
         email,
         phoneNumber,
@@ -1485,7 +1643,8 @@ app.post("/api/payments", (req, res) => {
     `;
 
     db.query(insertPaymentSql, [loanId, paymentAmount, newBalance], (err) => {
-      if (err) return res.status(500).json({ error: "Failed to insert payment" });
+      if (err)
+        return res.status(500).json({ error: "Failed to insert payment" });
 
       res.json({
         message: "Payment recorded successfully",
@@ -1498,15 +1657,16 @@ app.post("/api/payments", (req, res) => {
 // Upload Loan Application Form
 app.post("/api/loans/apply", async (req, res) => {
   try {
-    const {
-      clientId,
-      amount,
-      loanTypeId,
-      paymentFrequency,
-      loanTenure,
-    } = req.body;
+    const { clientId, amount, loanTypeId, paymentFrequency, loanTenure } =
+      req.body;
 
-    if (!clientId || !amount || !loanTypeId || !paymentFrequency || !loanTenure) {
+    if (
+      !clientId ||
+      !amount ||
+      !loanTypeId ||
+      !paymentFrequency ||
+      !loanTenure
+    ) {
       return res.status(400).json({ message: "All fields are required." });
     }
 
@@ -1536,7 +1696,7 @@ app.post("/api/loans/apply", async (req, res) => {
       WHERE Client_ID = ?
       LIMIT 1
       `,
-      [parsedClientId]
+      [parsedClientId],
     );
 
     if (borrowerRows.length === 0) {
@@ -1550,12 +1710,13 @@ app.post("/api/loans/apply", async (req, res) => {
       WHERE Client_ID = ?
       LIMIT 1
       `,
-      [parsedClientId]
+      [parsedClientId],
     );
 
     if (existingLoanRows.length > 0) {
       return res.status(400).json({
-        message: "You already have a loan. Only one loan is allowed per borrower.",
+        message:
+          "You already have a loan. Only one loan is allowed per borrower.",
       });
     }
 
@@ -1566,7 +1727,7 @@ app.post("/api/loans/apply", async (req, res) => {
       WHERE Loan_Type_ID = ?
       LIMIT 1
       `,
-      [parsedLoanTypeId]
+      [parsedLoanTypeId],
     );
 
     if (loanTypeRows.length === 0) {
@@ -1582,7 +1743,8 @@ app.post("/api/loans/apply", async (req, res) => {
     const addTermToDate = (date, frequency, term) => {
       if (frequency === "Daily") date.setDate(date.getDate() + term);
       if (frequency === "Weekly") date.setDate(date.getDate() + term * 7);
-      if (frequency === "Semi-monthly") date.setDate(date.getDate() + term * 15);
+      if (frequency === "Semi-monthly")
+        date.setDate(date.getDate() + term * 15);
       if (frequency === "Monthly") date.setMonth(date.getMonth() + term);
     };
 
@@ -1623,7 +1785,7 @@ app.post("/api/loans/apply", async (req, res) => {
         "Pending",
         parsedLoanTerm,
         paymentFrequency,
-      ]
+      ],
     );
 
     res.status(201).json({
@@ -1743,7 +1905,7 @@ app.post("/api/loan-types", (req, res) => {
   });
 });
 
-//business logic 50% loan 
+//business logic 50% loan
 app.get("/api/client-loans/:clientId", (req, res) => {
   const { clientId } = req.params;
 
@@ -1879,7 +2041,7 @@ app.get("/api/client-loan-eligibility/:clientId", async (req, res) => {
       ORDER BY l.Loan_ID DESC
       LIMIT 1
       `,
-      [clientId]
+      [clientId],
     );
 
     if (loans.length === 0) {
@@ -1906,7 +2068,7 @@ app.get("/api/client-loan-eligibility/:clientId", async (req, res) => {
       FROM LOAN_PAYMENT
       WHERE Loan_ID = ?
       `,
-      [loan.Loan_ID]
+      [loan.Loan_ID],
     );
 
     const totalPaid = Number(paymentRows[0].totalPaid || 0);
@@ -1949,7 +2111,9 @@ app.post("/api/loans/reloan", async (req, res) => {
   const { clientId, amount } = req.body;
 
   if (!clientId || !amount || Number(amount) <= 0) {
-    return res.status(400).json({ message: "Valid reloan amount is required." });
+    return res
+      .status(400)
+      .json({ message: "Valid reloan amount is required." });
   }
 
   const parsedAmount = Number(amount);
@@ -1970,7 +2134,7 @@ app.post("/api/loans/reloan", async (req, res) => {
       ORDER BY l.Loan_ID DESC
       LIMIT 1
       `,
-      [clientId]
+      [clientId],
     );
 
     if (loans.length === 0) {
@@ -1993,7 +2157,7 @@ app.post("/api/loans/reloan", async (req, res) => {
       FROM LOAN_PAYMENT
       WHERE Loan_ID = ?
       `,
-      [loan.Loan_ID]
+      [loan.Loan_ID],
     );
 
     const totalPaid = Number(paymentRows[0].totalPaid || 0);
@@ -2060,35 +2224,36 @@ app.post("/api/loans/reloan", async (req, res) => {
         formattedToday,
         formattedFirstDueDate,
         loan.Loan_ID,
-      ]
+      ],
     );
     const [latestBalanceRows] = await connection.query(
-  `
+      `
   SELECT Remaining_Balance
   FROM LOAN_PAYMENT
   WHERE Loan_ID = ?
   ORDER BY Payment_Date DESC, Payment_ID DESC
   LIMIT 1
   `,
-  [loan.Loan_ID]
-);
+      [loan.Loan_ID],
+    );
 
-const oldBalance =
-  latestBalanceRows.length > 0
-    ? Number(latestBalanceRows[0].Remaining_Balance)
-    : Number(loan.Principal_Amount) + Number(loan.Interest_Amount) - totalPaid;
+    const oldBalance =
+      latestBalanceRows.length > 0
+        ? Number(latestBalanceRows[0].Remaining_Balance)
+        : Number(loan.Principal_Amount) +
+          Number(loan.Interest_Amount) -
+          totalPaid;
 
-const newBalance = oldBalance + parsedAmount + newInterestAmount;
+    const newBalance = oldBalance + parsedAmount + newInterestAmount;
 
-
-await connection.query(
-  `
+    await connection.query(
+      `
   INSERT INTO LOAN_PAYMENT
   (Loan_ID, Amortization_Amount, Payment_Date, Remaining_Balance)
   VALUES (?, ?, CURDATE(), ?)
   `,
-  [loan.Loan_ID, 0, newBalance]
-);
+      [loan.Loan_ID, 0, newBalance],
+    );
     await connection.commit();
 
     res.json({
